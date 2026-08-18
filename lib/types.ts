@@ -16,6 +16,8 @@ export type HabitCompletion = {
   date: string;
 };
 
+export type DailyGoalCount = 1 | 2 | 3 | 'all';
+
 export type PersistedState = {
   waterGoalMl: number;
   glassMl: number;
@@ -26,6 +28,20 @@ export type PersistedState = {
   waterLogs: WaterLog[];
   completions: HabitCompletion[];
   lastGoalAdDate?: string;
+  waterTrackingEnabled: boolean;
+  xpTotal: number;
+  gems: number;
+  streakFreezes: number;
+  dailyGoalCount: DailyGoalCount;
+  includeWaterInDailyGoal: boolean;
+  appStreak: number;
+  longestStreak: number;
+  lastStreakDate?: string;
+  lastSettledDate?: string;
+  dailyGoalAwardedDate?: string;
+  perfectDayAwardedDate?: string;
+  waterXpAwardedDate?: string;
+  unlockedAchievementIds: string[];
 };
 
 export const FREE_HABIT_LIMIT = 4;
@@ -40,3 +56,12 @@ export const QUICK_ADD_ML = [150, 250, 350, 500];
 export const WATER_LOG_RETENTION_DAYS = 90;
 export const COMPLETION_RETENTION_DAYS = 400;
 export const MAX_HABIT_NAME_LENGTH = 80;
+export const DEFAULT_DAILY_GOAL_COUNT: DailyGoalCount = 2;
+export const MAX_STREAK_FREEZES = 2;
+export const XP_PER_HABIT = 10;
+export const XP_WATER_GOAL = 10;
+export const XP_DAILY_BONUS = 20;
+export const XP_PER_LEVEL = 100;
+export const GEMS_DAILY_GOAL = 5;
+export const GEMS_PERFECT_DAY = 5;
+export const STREAK_RISK_HOUR = 21;

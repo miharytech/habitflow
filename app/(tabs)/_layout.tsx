@@ -44,6 +44,19 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="progress"
+        options={{
+          title: 'Progress',
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{ ios: 'flame.fill', android: 'local_fire_department', web: 'local_fire_department' }}
+              tintColor={color}
+              size={26}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

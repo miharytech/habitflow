@@ -5,7 +5,8 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
-import { AppProvider } from '@/context/AppProvider';
+import CelebrationModal from '@/components/CelebrationModal';
+import { AppProvider, useApp } from '@/context/AppProvider';
 
 export {
   ErrorBoundary,
@@ -45,13 +46,15 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const { celebration, dismissCelebration } = useApp();
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'New habit' }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Habit' }} />
       </Stack>
+      <CelebrationModal celebration={celebration} onDismiss={dismissCelebration} />
     </ThemeProvider>
   );
 }

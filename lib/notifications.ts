@@ -2,6 +2,8 @@ import { Platform } from 'react-native';
 
 import * as Notifications from 'expo-notifications';
 
+import { STREAK_RISK_HOUR } from '@/lib/types';
+
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -13,6 +15,9 @@ if (Platform.OS !== 'web') {
   });
 }
 
+const WATER_ID_PREFIX = 'habitflow.water.';
+const STREAK_RISK_ID = 'habitflow.streak-risk';
+
 let syncChain: Promise<void> = Promise.resolve();
 
 export async function requestReminderPermission() {
@@ -23,47 +28,108 @@ export async function requestReminderPermission() {
 }
 
 export function syncWaterReminders(enabled: boolean, hours: number[]): Promise<boolean> {
-  const task = syncChain.then(() => applyWaterReminders(enabled, hours));
+  return syncReminderPlan({
+    waterEnabled: enabled,
+    waterHours: hours,
+    streakAtRisk: false,
+    streakCount: 0,
+  }).then((result) => result.waterScheduled);
+}
+
+export function syncReminderPlan(plan: {
+  waterEnabled: boolean;
+  waterHours: number[];
+  streakAtRisk: boolean;
+  streakCount: number;
+}): Promise<{ waterScheduled: boolean }> {
+  const task = syncChain.then(() => applyReminderPlan(plan));
   syncChain = task.then(
     () => undefined,
     () => undefined
   );
-  return task.catch(() => false);
+  return task.catch(() => ({ waterScheduled: false }));
 }
 
-async function applyWaterReminders(enabled: boolean, hours: number[]) {
-  if (Platform.OS === 'web') return !enabled;
+async function applyReminderPlan(plan: {
+  waterEnabled: boolean;
+  waterHours: number[];
+  streakAtRisk: boolean;
+  streakCount: number;
+}) {
+  if (Platform.OS === 'web') return { waterScheduled: !plan.waterEnabled };
 
-  await Notifications.cancelAllScheduledNotificationsAsync();
-  if (!enabled) return true;
+  await cancelManagedNotifications();
+
+  const needsPermission = plan.waterEnabled || plan.streakAtRisk;
+  if (!needsPermission) return { waterScheduled: true };
 
   const allowed = await requestReminderPermission();
-  if (!allowed) return false;
+  if (!allowed) return { waterScheduled: false };
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('reminders', {
-      name: 'Hydration reminders',
+      name: 'HabitFlow reminders',
       importance: Notifications.AndroidImportance.DEFAULT,
     });
   }
 
-  for (const hour of hours) {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Time to drink water',
-        body: 'A quick glass keeps your HabitFlow streak alive.',
-        sound: 'default',
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour,
-        minute: 0,
-        channelId: 'reminders',
-      },
-    });
+  if (plan.waterEnabled) {
+    for (const hour of plan.waterHours) {
+      await Notifications.scheduleNotificationAsync({
+        identifier: `${WATER_ID_PREFIX}${hour}`,
+        content: {
+          title: 'Time to drink water',
+          body: 'A quick glass keeps your HabitFlow streak alive.',
+          sound: 'default',
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour,
+          minute: 0,
+          channelId: 'reminders',
+        },
+      });
+    }
   }
 
-  return true;
+  if (plan.streakAtRisk) {
+    const fireAt = nextStreakRiskDate();
+    if (fireAt) {
+      const days = plan.streakCount;
+      await Notifications.scheduleNotificationAsync({
+        identifier: STREAK_RISK_ID,
+        content: {
+          title: days > 0 ? `Your ${days}-day streak is at risk` : 'Your streak is at risk',
+          body: 'Finish today’s daily goal to keep the flame going.',
+          sound: 'default',
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: fireAt,
+          channelId: 'reminders',
+        },
+      });
+    }
+  }
+
+  return { waterScheduled: true };
+}
+
+function nextStreakRiskDate(from = new Date()) {
+  const target = new Date(from.getFullYear(), from.getMonth(), from.getDate(), STREAK_RISK_HOUR, 0, 0);
+  if (target.getTime() <= from.getTime()) return null;
+  return target;
+}
+
+async function cancelManagedNotifications() {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    scheduled
+      .filter(
+        (item) => item.identifier === STREAK_RISK_ID || item.identifier.startsWith(WATER_ID_PREFIX)
+      )
+      .map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier))
+  );
 }
 
 function isAllowed(settings: Notifications.NotificationPermissionsStatus) {

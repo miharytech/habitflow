@@ -11,9 +11,10 @@ type Props = {
   streak: number;
   onToggle: () => void;
   onDelete?: () => void;
+  onEdit?: () => void;
 };
 
-export default function HabitRow({ habit, done, streak, onToggle, onDelete }: Props) {
+export default function HabitRow({ habit, done, streak, onToggle, onDelete, onEdit }: Props) {
   const scheme = useColorScheme();
   const theme = Colors[scheme];
 
@@ -37,6 +38,14 @@ export default function HabitRow({ habit, done, streak, onToggle, onDelete }: Pr
           {streak > 0 ? `${streak}-day streak` : 'Start a streak today'}
         </Text>
       </View>
+      {onEdit ? (
+        <Pressable
+          onPress={onEdit}
+          hitSlop={8}
+          style={({ pressed }) => [styles.edit, { opacity: pressed ? 0.6 : 1 }]}>
+          <Text style={{ color: theme.tint, fontWeight: '700' }}>Edit</Text>
+        </Pressable>
+      ) : null}
     </Pressable>
   );
 }
@@ -76,5 +85,9 @@ const styles = StyleSheet.create({
   meta: {
     marginTop: 2,
     fontSize: 12,
+  },
+  edit: {
+    paddingLeft: 8,
+    backgroundColor: 'transparent',
   },
 });

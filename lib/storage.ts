@@ -1,8 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { addDays, localDayOf, todayKey } from '@/lib/dates';
+import { clampFreezes, parseDailyGoalCount } from '@/lib/gamification';
 import {
   COMPLETION_RETENTION_DAYS,
+  DEFAULT_DAILY_GOAL_COUNT,
   DEFAULT_GLASS_ML,
   DEFAULT_REMINDER_HOURS,
   DEFAULT_WATER_GOAL_ML,
@@ -37,6 +39,15 @@ export const emptyState = (): PersistedState => ({
   ],
   waterLogs: [],
   completions: [],
+  waterTrackingEnabled: true,
+  xpTotal: 0,
+  gems: 0,
+  streakFreezes: 0,
+  dailyGoalCount: DEFAULT_DAILY_GOAL_COUNT,
+  includeWaterInDailyGoal: false,
+  appStreak: 0,
+  longestStreak: 0,
+  unlockedAchievementIds: [],
 });
 
 export async function loadState(): Promise<PersistedState> {
@@ -105,10 +116,8 @@ function parseState(value: unknown): PersistedState {
         .filter((item): item is HabitCompletion => item !== null)
     : [];
 
-  const lastGoalAdDate =
-    typeof value.lastGoalAdDate === 'string' && DAY_KEY.test(value.lastGoalAdDate)
-      ? value.lastGoalAdDate
-      : undefined;
+  const lastGoalAdDate = parseDay(value.lastGoalAdDate);
+  const waterTrackingEnabled = value.waterTrackingEnabled !== false;
 
   return {
     waterGoalMl: clamp(
@@ -118,13 +127,41 @@ function parseState(value: unknown): PersistedState {
     ),
     glassMl: clamp(asFiniteNumber(value.glassMl, DEFAULT_GLASS_ML), 50, 2000),
     extraHabitSlots: clampSlots(asFiniteNumber(value.extraHabitSlots, 0)),
-    remindersEnabled: value.remindersEnabled === true,
+    remindersEnabled: value.remindersEnabled === true && waterTrackingEnabled,
     reminderHours: parseHours(value.reminderHours),
     habits,
     waterLogs,
     completions,
     lastGoalAdDate,
+    waterTrackingEnabled,
+    xpTotal: Math.max(0, Math.floor(asFiniteNumber(value.xpTotal, 0))),
+    gems: Math.max(0, Math.floor(asFiniteNumber(value.gems, 0))),
+    streakFreezes: clampFreezes(asFiniteNumber(value.streakFreezes, 0)),
+    dailyGoalCount: parseDailyGoalCount(value.dailyGoalCount),
+    includeWaterInDailyGoal: waterTrackingEnabled && value.includeWaterInDailyGoal === true,
+    appStreak: Math.max(0, Math.floor(asFiniteNumber(value.appStreak, 0))),
+    longestStreak: Math.max(
+      Math.max(0, Math.floor(asFiniteNumber(value.longestStreak, 0))),
+      Math.max(0, Math.floor(asFiniteNumber(value.appStreak, 0)))
+    ),
+    lastStreakDate: parseDay(value.lastStreakDate),
+    lastSettledDate: parseDay(value.lastSettledDate),
+    dailyGoalAwardedDate: parseDay(value.dailyGoalAwardedDate),
+    perfectDayAwardedDate: parseDay(value.perfectDayAwardedDate),
+    waterXpAwardedDate: parseDay(value.waterXpAwardedDate),
+    unlockedAchievementIds: parseAchievementIds(value.unlockedAchievementIds),
   };
+}
+
+function parseDay(value: unknown) {
+  return typeof value === 'string' && DAY_KEY.test(value) ? value : undefined;
+}
+
+function parseAchievementIds(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 64)
+    .filter((id, index, all) => all.indexOf(id) === index);
 }
 
 function parseHabit(value: unknown): Habit | null {

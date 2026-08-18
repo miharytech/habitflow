@@ -45,3 +45,16 @@ export function formatMl(ml: number) {
   }
   return `${ml} ml`;
 }
+
+export function recentDayKeys(today: string, count: number) {
+  const days: string[] = [];
+  for (let i = count - 1; i >= 0; i -= 1) {
+    days.push(addDays(today, -i));
+  }
+  return days;
+}
+
+export function localDateFromKey(key: string) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
