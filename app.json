@@ -56,6 +56,10 @@
         "bannerUnitId": "",
         "interstitialUnitId": "",
         "rewardedUnitId": ""
+      },
+      "router": {},
+      "eas": {
+        "projectId": "ad3e0fc6-6efb-4180-94c6-2f2e214c4230"
       }
     },
     "experiments": {
