@@ -12,6 +12,25 @@ export function addDays(key: string, days: number) {
   return todayKey(next);
 }
 
+export function localDayOf(iso: string) {
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return todayKey(parsed);
+}
+
+export function isOnLocalDay(iso: string, day: string) {
+  return localDayOf(iso) === day;
+}
+
+export function msUntilNextLocalMidnight(from = new Date()) {
+  const next = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 1);
+  return Math.max(next.getTime() - from.getTime(), 1000);
+}
+
+export function createId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function greeting(date = new Date()) {
   const hour = date.getHours();
   if (hour < 12) return 'Good morning';

@@ -1,13 +1,19 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { AppState } from 'react-native';
 
 import * as Haptics from 'expo-haptics';
 
 import { isAdMobAvailable, showInterstitial, showRewardedAd } from '@/lib/ads';
-import { addDays, todayKey } from '@/lib/dates';
+import { addDays, createId, isOnLocalDay, msUntilNextLocalMidnight, todayKey } from '@/lib/dates';
 import { syncWaterReminders } from '@/lib/notifications';
-import { loadState, saveState } from '@/lib/storage';
+import { emptyState, loadState, scheduleSave } from '@/lib/storage';
 import {
+  DEFAULT_REMINDER_HOURS,
   FREE_HABIT_LIMIT,
+  MAX_EXTRA_HABIT_SLOTS,
+  MAX_HABIT_NAME_LENGTH,
+  MAX_WATER_GOAL_ML,
+  MIN_WATER_GOAL_ML,
   REWARD_EXTRA_SLOTS,
   type Habit,
   type PersistedState,
@@ -34,24 +40,66 @@ type AppContextValue = {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
+function useLocalToday() {
+  const [today, setToday] = useState(() => todayKey());
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+
+    const schedule = () => {
+      timeout = setTimeout(() => {
+        setToday(todayKey());
+        schedule();
+      }, msUntilNextLocalMidnight());
+    };
+
+    schedule();
+    const sub = AppState.addEventListener('change', (status) => {
+      if (status === 'active') setToday(todayKey());
+    });
+
+    return () => {
+      clearTimeout(timeout);
+      sub.remove();
+    };
+  }, []);
+
+  return today;
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [state, setState] = useState<PersistedState | null>(null);
-  const today = todayKey();
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const today = useLocalToday();
 
   useEffect(() => {
-    loadState().then((loaded) => {
-      setState(loaded);
-      setReady(true);
-      if (loaded.remindersEnabled) {
-        syncWaterReminders(true, loaded.reminderHours).catch(() => undefined);
-      }
-    });
+    loadState()
+      .then((loaded) => {
+        setState(loaded);
+        setReady(true);
+        if (loaded.remindersEnabled) {
+          syncWaterReminders(true, loaded.reminderHours)
+            .then((scheduled) => {
+              if (!scheduled) {
+                setState((current) =>
+                  current ? { ...current, remindersEnabled: false } : current
+                );
+              }
+            })
+            .catch(() => undefined);
+        }
+      })
+      .catch(() => {
+        setState(emptyState());
+        setReady(true);
+      });
   }, []);
 
   useEffect(() => {
     if (!state) return;
-    saveState(state).catch(() => undefined);
+    scheduleSave(state);
   }, [state]);
 
   const update = useCallback((recipe: (current: PersistedState) => PersistedState) => {
@@ -61,7 +109,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const waterTodayMl = useMemo(() => {
     if (!state) return 0;
     return state.waterLogs
-      .filter((log) => log.at.startsWith(today))
+      .filter((log) => isOnLocalDay(log.at, today))
       .reduce((sum, log) => sum + log.ml, 0);
   }, [state, today]);
 
@@ -69,16 +117,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const canAddHabit = (state?.habits.length ?? 0) < habitLimit;
 
   const value = useMemo<AppContextValue>(() => {
-    const current = state ?? {
-      waterGoalMl: 2000,
-      glassMl: 250,
-      extraHabitSlots: 0,
-      remindersEnabled: false,
-      reminderHours: [],
-      habits: [],
-      waterLogs: [],
-      completions: [],
-    };
+    const current = state ?? emptyState();
 
     return {
       ready,
@@ -88,27 +127,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
       habitLimit,
       canAddHabit,
       addWater: async (ml) => {
-        const nextTotal = waterTodayMl + ml;
-        const reachedGoal =
-          waterTodayMl < current.waterGoalMl && nextTotal >= current.waterGoalMl;
-        update((prev) => ({
-          ...prev,
-          waterLogs: [
-            ...prev.waterLogs,
-            { id: `${Date.now()}`, ml, at: new Date().toISOString() },
-          ],
-        }));
+        if (!Number.isFinite(ml) || ml <= 0) return;
+        let shouldShowAd = false;
+        update((prev) => {
+          const todayMl = prev.waterLogs
+            .filter((log) => isOnLocalDay(log.at, today))
+            .reduce((sum, log) => sum + log.ml, 0);
+          const nextTotal = todayMl + ml;
+          const reachedGoal = todayMl < prev.waterGoalMl && nextTotal >= prev.waterGoalMl;
+          const alreadyShown = prev.lastGoalAdDate === today;
+          if (reachedGoal && !alreadyShown) shouldShowAd = true;
+          return {
+            ...prev,
+            waterLogs: [...prev.waterLogs, { id: createId(), ml, at: new Date().toISOString() }],
+            lastGoalAdDate: reachedGoal && !alreadyShown ? today : prev.lastGoalAdDate,
+          };
+        });
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-        if (reachedGoal && current.lastGoalAdDate !== today) {
-          const shown = await showInterstitial();
-          if (shown) {
-            update((prev) => ({ ...prev, lastGoalAdDate: today }));
-          }
+        if (shouldShowAd) {
+          await showInterstitial();
         }
       },
       undoWater: () => {
         update((prev) => {
-          const todayLogs = prev.waterLogs.filter((log) => log.at.startsWith(today));
+          const todayLogs = prev.waterLogs.filter((log) => isOnLocalDay(log.at, today));
           const last = todayLogs[todayLogs.length - 1];
           if (!last) return prev;
           return { ...prev, waterLogs: prev.waterLogs.filter((log) => log.id !== last.id) };
@@ -144,20 +186,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return count;
       },
       addHabit: (name, emoji) => {
-        if (current.habits.length >= current.extraHabitSlots + FREE_HABIT_LIMIT) return 'limit';
-        update((prev) => ({
-          ...prev,
-          habits: [
-            ...prev.habits,
-            {
-              id: `${Date.now()}`,
-              name: name.trim(),
-              emoji: emoji.trim() || '✅',
-              createdAt: new Date().toISOString(),
-            },
-          ],
-        }));
-        return 'ok';
+        const trimmed = name.trim().slice(0, MAX_HABIT_NAME_LENGTH);
+        if (!trimmed) return 'limit';
+        let result: 'ok' | 'limit' = 'limit';
+        setState((prev) => {
+          if (!prev) return prev;
+          if (prev.habits.length >= prev.extraHabitSlots + FREE_HABIT_LIMIT) {
+            result = 'limit';
+            return prev;
+          }
+          result = 'ok';
+          return {
+            ...prev,
+            habits: [
+              ...prev.habits,
+              {
+                id: createId(),
+                name: trimmed,
+                emoji: emoji.trim() || '✅',
+                createdAt: new Date().toISOString(),
+              },
+            ],
+          };
+        });
+        return result;
       },
       deleteHabit: (id) => {
         update((prev) => ({
@@ -167,27 +219,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }));
       },
       unlockMoreHabits: async () => {
-        if (!isAdMobAvailable()) {
-          if (__DEV__) {
-            update((prev) => ({
+        const grantSlots = () => {
+          let granted = false;
+          update((prev) => {
+            if (prev.extraHabitSlots >= MAX_EXTRA_HABIT_SLOTS) {
+              granted = true;
+              return prev;
+            }
+            granted = true;
+            return {
               ...prev,
-              extraHabitSlots: prev.extraHabitSlots + REWARD_EXTRA_SLOTS,
-            }));
-            return true;
-          }
+              extraHabitSlots: Math.min(
+                MAX_EXTRA_HABIT_SLOTS,
+                prev.extraHabitSlots + REWARD_EXTRA_SLOTS
+              ),
+            };
+          });
+          return granted;
+        };
+
+        if (!isAdMobAvailable()) {
+          if (__DEV__) return grantSlots();
           return false;
         }
         const rewarded = await showRewardedAd();
         if (!rewarded) return false;
-        update((prev) => ({ ...prev, extraHabitSlots: prev.extraHabitSlots + REWARD_EXTRA_SLOTS }));
-        return true;
+        return grantSlots();
       },
       setWaterGoal: (ml) => {
-        update((prev) => ({ ...prev, waterGoalMl: Math.max(500, ml) }));
+        const next = Math.min(MAX_WATER_GOAL_ML, Math.max(MIN_WATER_GOAL_ML, ml));
+        update((prev) => ({ ...prev, waterGoalMl: next }));
       },
       setRemindersEnabled: async (enabled) => {
-        await syncWaterReminders(enabled, current.reminderHours);
-        update((prev) => ({ ...prev, remindersEnabled: enabled }));
+        const hours = stateRef.current?.reminderHours ?? DEFAULT_REMINDER_HOURS;
+        const scheduled = await syncWaterReminders(enabled, hours);
+        update((prev) => ({ ...prev, remindersEnabled: enabled && scheduled }));
       },
     };
   }, [canAddHabit, habitLimit, ready, state, today, update, waterTodayMl]);

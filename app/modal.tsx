@@ -8,6 +8,7 @@ import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { useApp } from '@/context/AppProvider';
+import { MAX_HABIT_NAME_LENGTH } from '@/lib/types';
 
 const EMOJIS = ['✅', '💪', '📚', '🧘', '🚶', '💧', '🧠', '😴', '🥗', '🙏'];
 
@@ -28,7 +29,11 @@ export default function ModalScreen() {
       if (!unlocked) return;
     }
     const result = addHabit(name, emoji);
-    if (result === 'ok') router.back();
+    if (result === 'ok') {
+      router.back();
+      return;
+    }
+    Alert.alert('Habit limit reached', 'Watch a rewarded ad from the Habits tab to unlock more slots.');
   };
 
   return (
@@ -39,6 +44,7 @@ export default function ModalScreen() {
         onChangeText={setName}
         placeholder="e.g. No sugar"
         placeholderTextColor={theme.muted}
+        maxLength={MAX_HABIT_NAME_LENGTH}
         style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.card }]}
       />
       <Text style={[styles.label, { color: theme.muted }]}>Icon</Text>

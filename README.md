@@ -26,12 +26,12 @@ Data stays on the phone (AsyncStorage). No account required.
 
 AdMob is the right network: Google lists **Madagascar** and pays by **international wire transfer** (no PayPal). Threshold is about **$100**.
 
-Until you have an AdMob account, the app uses Google **test** app IDs in `app.json`. After Play Console + AdMob setup:
+Until you have an AdMob account, the app uses Google **test** ads in development only. Release builds will not request ads until you add real unit IDs (this avoids shipping Google test IDs to Play Store). After Play Console + AdMob setup:
 
 1. Create an AdMob app for Android
 2. Create banner, interstitial, and rewarded ad units
-3. Put your real `androidAppId` in `app.json` (the `ca-app-pub-...~...` value)
-4. Replace `TestIds.*` in `lib/ads.ts` with your ad unit IDs (`ca-app-pub-.../...`)
+3. Put your real `androidAppId` / `iosAppId` in `app.json` (the `ca-app-pub-...~...` value)
+4. Put your banner, interstitial, and rewarded unit IDs in `expo.extra.ads` in `app.json`
 5. Rebuild with EAS
 
 PayPal is a poor payout option from Madagascar. Use a bank that can receive SWIFT wires.

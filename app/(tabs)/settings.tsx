@@ -68,9 +68,9 @@ export default function SettingsScreen() {
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={styles.cardTitle}>Ads & payouts</Text>
           <Text style={[styles.body, { color: theme.muted }]}>
-            HabitFlow uses Google AdMob test ads for now. After you create an AdMob account in
-            Madagascar, replace the test IDs in app.json. Google can pay Madagascar publishers by
-            international wire transfer once you pass the $100 threshold.
+            HabitFlow uses Google AdMob test ads in development. For a Play Store build, put your
+            real app IDs in app.json and unit IDs in extra.ads. Google can pay Madagascar publishers
+            by international wire transfer once you pass the $100 threshold.
           </Text>
         </View>
       </View>

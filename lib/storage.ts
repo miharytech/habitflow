@@ -1,13 +1,27 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { addDays, localDayOf, todayKey } from '@/lib/dates';
 import {
+  COMPLETION_RETENTION_DAYS,
   DEFAULT_GLASS_ML,
   DEFAULT_REMINDER_HOURS,
   DEFAULT_WATER_GOAL_ML,
+  MAX_EXTRA_HABIT_SLOTS,
+  MAX_HABIT_NAME_LENGTH,
+  MAX_WATER_GOAL_ML,
+  MIN_WATER_GOAL_ML,
+  WATER_LOG_RETENTION_DAYS,
+  type Habit,
+  type HabitCompletion,
   type PersistedState,
+  type WaterLog,
 } from '@/lib/types';
 
 const KEY = 'habitflow.state.v1';
+const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
+let writing = false;
+let queued: PersistedState | null = null;
 
 export const emptyState = (): PersistedState => ({
   waterGoalMl: DEFAULT_WATER_GOAL_ML,
@@ -29,12 +43,141 @@ export async function loadState(): Promise<PersistedState> {
   const raw = await AsyncStorage.getItem(KEY);
   if (!raw) return emptyState();
   try {
-    return { ...emptyState(), ...JSON.parse(raw) };
+    return pruneState(parseState(JSON.parse(raw)));
   } catch {
     return emptyState();
   }
 }
 
 export async function saveState(state: PersistedState) {
-  await AsyncStorage.setItem(KEY, JSON.stringify(state));
+  await AsyncStorage.setItem(KEY, JSON.stringify(pruneState(state)));
+}
+
+export function scheduleSave(state: PersistedState) {
+  queued = state;
+  void flushSaves();
+}
+
+async function flushSaves() {
+  if (writing) return;
+  writing = true;
+  try {
+    while (queued) {
+      const next = queued;
+      queued = null;
+      await saveState(next);
+    }
+  } catch {
+    // Keep any snapshot queued while this write failed.
+  } finally {
+    writing = false;
+    if (queued) void flushSaves();
+  }
+}
+
+export function pruneState(state: PersistedState, today = todayKey()): PersistedState {
+  const waterCutoff = addDays(today, -WATER_LOG_RETENTION_DAYS);
+  const completionCutoff = addDays(today, -COMPLETION_RETENTION_DAYS);
+  return {
+    ...state,
+    extraHabitSlots: clampSlots(state.extraHabitSlots),
+    waterLogs: state.waterLogs.filter((log) => {
+      const day = localDayOf(log.at);
+      return Boolean(day) && day >= waterCutoff;
+    }),
+    completions: state.completions.filter((item) => item.date >= completionCutoff),
+  };
+}
+
+function parseState(value: unknown): PersistedState {
+  const fallback = emptyState();
+  if (!isRecord(value)) return fallback;
+
+  const habits = Array.isArray(value.habits)
+    ? value.habits.map(parseHabit).filter((habit): habit is Habit => habit !== null)
+    : fallback.habits;
+  const waterLogs = Array.isArray(value.waterLogs)
+    ? value.waterLogs.map(parseWaterLog).filter((log): log is WaterLog => log !== null)
+    : [];
+  const completions = Array.isArray(value.completions)
+    ? value.completions
+        .map(parseCompletion)
+        .filter((item): item is HabitCompletion => item !== null)
+    : [];
+
+  const lastGoalAdDate =
+    typeof value.lastGoalAdDate === 'string' && DAY_KEY.test(value.lastGoalAdDate)
+      ? value.lastGoalAdDate
+      : undefined;
+
+  return {
+    waterGoalMl: clamp(
+      asFiniteNumber(value.waterGoalMl, DEFAULT_WATER_GOAL_ML),
+      MIN_WATER_GOAL_ML,
+      MAX_WATER_GOAL_ML
+    ),
+    glassMl: clamp(asFiniteNumber(value.glassMl, DEFAULT_GLASS_ML), 50, 2000),
+    extraHabitSlots: clampSlots(asFiniteNumber(value.extraHabitSlots, 0)),
+    remindersEnabled: value.remindersEnabled === true,
+    reminderHours: parseHours(value.reminderHours),
+    habits,
+    waterLogs,
+    completions,
+    lastGoalAdDate,
+  };
+}
+
+function parseHabit(value: unknown): Habit | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.id !== 'string' || typeof value.name !== 'string') return null;
+  const name = value.name.trim().slice(0, MAX_HABIT_NAME_LENGTH);
+  if (!name) return null;
+  return {
+    id: value.id.slice(0, 64),
+    name,
+    emoji: typeof value.emoji === 'string' && value.emoji.trim() ? value.emoji.trim().slice(0, 8) : '✅',
+    createdAt: typeof value.createdAt === 'string' ? value.createdAt : new Date().toISOString(),
+  };
+}
+
+function parseWaterLog(value: unknown): WaterLog | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.id !== 'string' || typeof value.at !== 'string') return null;
+  const ml = asFiniteNumber(value.ml, NaN);
+  if (!Number.isFinite(ml) || ml <= 0 || ml > 5000) return null;
+  if (!localDayOf(value.at)) return null;
+  return { id: value.id.slice(0, 64), ml, at: value.at };
+}
+
+function parseCompletion(value: unknown): HabitCompletion | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.habitId !== 'string' || typeof value.date !== 'string') return null;
+  if (!DAY_KEY.test(value.date)) return null;
+  return { habitId: value.habitId.slice(0, 64), date: value.date };
+}
+
+function parseHours(value: unknown): number[] {
+  if (!Array.isArray(value)) return DEFAULT_REMINDER_HOURS;
+  const hours = value
+    .filter((hour): hour is number => typeof hour === 'number' && Number.isInteger(hour) && hour >= 0 && hour <= 23)
+    .filter((hour, index, all) => all.indexOf(hour) === index)
+    .sort((a, b) => a - b);
+  return hours.length ? hours : DEFAULT_REMINDER_HOURS;
+}
+
+function clampSlots(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(MAX_EXTRA_HABIT_SLOTS, Math.max(0, Math.floor(value)));
+}
+
+function asFiniteNumber(value: unknown, fallback: number) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

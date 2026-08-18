@@ -51,6 +51,13 @@
         }
       ]
     ],
+    "extra": {
+      "ads": {
+        "bannerUnitId": "",
+        "interstitialUnitId": "",
+        "rewardedUnitId": ""
+      }
+    },
     "experiments": {
       "typedRoutes": true
     }

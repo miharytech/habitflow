@@ -20,7 +20,7 @@ export default function AdBanner() {
       <Text style={styles.placeholderText}>
         {isExpoGo || !isAdMobAvailable()
           ? 'Ads show in a Play Store / development build'
-          : 'Ad loading'}
+          : 'Add AdMob unit IDs to show ads'}
       </Text>
     </View>
   );
