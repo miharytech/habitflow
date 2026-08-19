@@ -1,9 +1,12 @@
-import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Alert, ScrollView, StyleSheet } from 'react-native';
 
 import AdBanner from '@/components/AdBanner';
+import PressableScale from '@/components/PressableScale';
 import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
-import Colors from '@/constants/Colors';
+import Colors, { Gradients } from '@/constants/Colors';
+import { Fonts } from '@/constants/Fonts';
 import { useApp } from '@/context/AppProvider';
 import { isAdMobAvailable } from '@/lib/ads';
 import { recentDayKeys } from '@/lib/dates';
@@ -19,7 +22,7 @@ export default function ProgressScreen() {
 
   if (!ready) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: theme.background }]}>
         <Text>Loading…</Text>
       </View>
     );
@@ -49,16 +52,16 @@ export default function ProgressScreen() {
   };
 
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Progress</Text>
+    <View style={[styles.screen, { backgroundColor: theme.background }]}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={[styles.title, { color: theme.text }]}>Progress</Text>
         <Text style={[styles.meta, { color: theme.muted }]}>
-          {state.appStreak}-day streak · best {state.longestStreak} · {state.streakFreezes} freeze
+          🔥 {state.appStreak}-day streak · best {state.longestStreak} · {state.streakFreezes} freeze
           {state.streakFreezes === 1 ? '' : 's'}
         </Text>
 
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={styles.cardTitle}>This week</Text>
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>This week</Text>
           <View style={styles.week}>
             {days.map((date) => {
               const met = isDailyGoalMet(state, date);
@@ -67,37 +70,53 @@ export default function ProgressScreen() {
               return (
                 <View key={date} style={styles.day}>
                   <Text style={[styles.dayLabel, { color: theme.muted }]}>{weekday}</Text>
-                  <View
-                    style={[
-                      styles.dot,
-                      {
-                        backgroundColor: met ? theme.streak : frozen ? theme.gem : theme.border,
-                      },
-                    ]}
-                  />
+                  {met ? (
+                    <LinearGradient colors={Gradients.fire} style={styles.dot}>
+                      <Text style={styles.dotCheck}>✓</Text>
+                    </LinearGradient>
+                  ) : (
+                    <View
+                      style={[
+                        styles.dot,
+                        {
+                          backgroundColor: frozen ? theme.gem : theme.backgroundAlt,
+                          borderWidth: frozen ? 0 : 1,
+                          borderColor: theme.border,
+                        },
+                      ]}>
+                      {frozen ? <Text style={styles.dotCheck}>❄</Text> : null}
+                    </View>
+                  )}
                 </View>
               );
             })}
           </View>
         </View>
 
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={styles.cardTitle}>
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>
             Level {level} · {into}/{XP_PER_LEVEL} XP
           </Text>
-          <View style={[styles.track, { backgroundColor: theme.border }]}>
-            <View
-              style={[styles.fill, { width: `${Math.round((into / XP_PER_LEVEL) * 100)}%`, backgroundColor: theme.gem }]}
+          <View style={[styles.track, { backgroundColor: theme.backgroundAlt }]}>
+            <LinearGradient
+              colors={Gradients.gem}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.fill, { width: `${Math.max(Math.round((into / XP_PER_LEVEL) * 100), 4)}%` }]}
             />
           </View>
-          <Text style={[styles.hint, { color: theme.muted }]}>{state.xpTotal} XP total · {state.gems} gems</Text>
+          <Text style={[styles.hint, { color: theme.muted }]}>
+            {state.xpTotal} XP total · 💎 {state.gems} gems
+          </Text>
         </View>
 
-        <Pressable style={[styles.cta, { backgroundColor: theme.streak }]} onPress={onFreeze}>
-          <Text style={styles.ctaText}>Watch an ad for a streak freeze</Text>
-        </Pressable>
+        <PressableScale onPress={onFreeze}>
+          <LinearGradient colors={Gradients.fire} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
+            <Text style={styles.ctaText}>❄️ Watch an ad for a streak freeze</Text>
+          </LinearGradient>
+        </PressableScale>
 
-        <Text style={styles.section}>Achievements</Text>
+        <Text style={[styles.section, { color: theme.text }]}>Achievements</Text>
         <View style={styles.grid}>
           {ACHIEVEMENTS.map((item) => {
             const on = unlocked.has(item.id);
@@ -108,12 +127,21 @@ export default function ProgressScreen() {
                   styles.badge,
                   {
                     backgroundColor: theme.card,
-                    borderColor: on ? theme.tint : theme.border,
-                    opacity: on ? 1 : 0.55,
+                    borderColor: on ? 'transparent' : theme.border,
+                    shadowColor: theme.shadow,
+                    opacity: on ? 1 : 0.5,
                   },
                 ]}>
-                <Text style={styles.badgeEmoji}>{item.emoji}</Text>
-                <Text style={styles.badgeTitle}>{item.title}</Text>
+                {on ? (
+                  <LinearGradient colors={Gradients.brand} style={styles.badgeIcon}>
+                    <Text style={styles.badgeEmoji}>{item.emoji}</Text>
+                  </LinearGradient>
+                ) : (
+                  <View style={[styles.badgeIcon, { backgroundColor: theme.backgroundAlt }]}>
+                    <Text style={styles.badgeEmoji}>🔒</Text>
+                  </View>
+                )}
+                <Text style={[styles.badgeTitle, { color: theme.text }]}>{item.title}</Text>
                 <Text style={[styles.badgeDesc, { color: theme.muted }]}>{item.description}</Text>
               </View>
             );
@@ -133,35 +161,40 @@ function addDaysIndex(date: string) {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { padding: 20, paddingBottom: 32 },
-  title: { fontSize: 28, fontWeight: '800' },
-  meta: { marginTop: 4, marginBottom: 16, fontSize: 14 },
+  content: { padding: 20, paddingBottom: 20 },
+  title: { fontSize: 28, fontFamily: Fonts.extrabold },
+  meta: { marginTop: 4, marginBottom: 18, fontSize: 14, fontFamily: Fonts.semibold },
   card: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 22,
+    padding: 18,
     marginBottom: 12,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 1,
+    shadowRadius: 16,
+    elevation: 2,
   },
-  cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 12 },
+  cardTitle: { fontSize: 16, fontFamily: Fonts.bold, marginBottom: 14 },
   week: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     backgroundColor: 'transparent',
   },
-  day: { alignItems: 'center', backgroundColor: 'transparent', gap: 6 },
-  dayLabel: { fontSize: 11, fontWeight: '700' },
-  dot: { width: 18, height: 18, borderRadius: 9 },
-  track: { height: 10, borderRadius: 999, overflow: 'hidden' },
-  fill: { height: 10, borderRadius: 999 },
-  hint: { marginTop: 8, fontSize: 13 },
+  day: { alignItems: 'center', backgroundColor: 'transparent', gap: 8 },
+  dayLabel: { fontSize: 11, fontFamily: Fonts.bold },
+  dot: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  dotCheck: { color: '#fff', fontSize: 12, fontFamily: Fonts.extrabold },
+  track: { height: 12, borderRadius: 999, overflow: 'hidden' },
+  fill: { height: 12, borderRadius: 999, minWidth: 12 },
+  hint: { marginTop: 10, fontSize: 13, fontFamily: Fonts.semibold },
   cta: {
-    borderRadius: 16,
-    paddingVertical: 14,
+    borderRadius: 18,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  ctaText: { color: '#fff', fontWeight: '800' },
-  section: { marginBottom: 10, fontSize: 18, fontWeight: '700' },
+  ctaText: { color: '#fff', fontFamily: Fonts.extrabold, fontSize: 15 },
+  section: { marginBottom: 12, fontSize: 19, fontFamily: Fonts.extrabold },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -172,10 +205,22 @@ const styles = StyleSheet.create({
     width: '48%',
     flexGrow: 1,
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 20,
+    padding: 14,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 1,
   },
-  badgeEmoji: { fontSize: 22, marginBottom: 6 },
-  badgeTitle: { fontWeight: '800' },
-  badgeDesc: { marginTop: 4, fontSize: 12, lineHeight: 16 },
+  badgeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  badgeEmoji: { fontSize: 19 },
+  badgeTitle: { fontFamily: Fonts.extrabold, fontSize: 14 },
+  badgeDesc: { marginTop: 4, fontSize: 12, lineHeight: 16, fontFamily: Fonts.medium },
 });

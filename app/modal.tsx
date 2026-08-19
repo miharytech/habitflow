@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, Platform } from 'react-native';
+import { Alert, StyleSheet, TextInput, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 
+import PressableScale from '@/components/PressableScale';
 import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
-import Colors from '@/constants/Colors';
+import Colors, { Gradients } from '@/constants/Colors';
+import { Fonts } from '@/constants/Fonts';
 import { useApp } from '@/context/AppProvider';
 import { MAX_HABIT_NAME_LENGTH } from '@/lib/types';
 
@@ -59,33 +62,44 @@ export default function ModalScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{existing ? 'Edit habit' : 'New habit'}</Text>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <Text style={[styles.title, { color: theme.text }]}>{existing ? 'Edit habit' : 'New habit'}</Text>
+      <Text style={[styles.label, { color: theme.muted }]}>Name</Text>
       <TextInput
         value={name}
         onChangeText={setName}
         placeholder="e.g. No sugar"
         placeholderTextColor={theme.muted}
         maxLength={MAX_HABIT_NAME_LENGTH}
-        style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.card }]}
+        style={[
+          styles.input,
+          { color: theme.text, borderColor: theme.border, backgroundColor: theme.card, fontFamily: Fonts.semibold },
+        ]}
       />
       <Text style={[styles.label, { color: theme.muted }]}>Icon</Text>
       <View style={styles.emojis}>
-        {EMOJIS.map((item) => (
-          <Pressable
-            key={item}
-            onPress={() => setEmoji(item)}
-            style={[
-              styles.emoji,
-              { borderColor: item === emoji ? theme.tint : theme.border, backgroundColor: theme.card },
-            ]}>
-            <Text style={{ fontSize: 22 }}>{item}</Text>
-          </Pressable>
-        ))}
+        {EMOJIS.map((item) => {
+          const active = item === emoji;
+          return (
+            <PressableScale key={item} onPress={() => setEmoji(item)} scaleTo={0.9}>
+              {active ? (
+                <LinearGradient colors={Gradients.brand} style={styles.emoji}>
+                  <Text style={{ fontSize: 22 }}>{item}</Text>
+                </LinearGradient>
+              ) : (
+                <View style={[styles.emoji, { borderWidth: 1, borderColor: theme.border, backgroundColor: theme.card }]}>
+                  <Text style={{ fontSize: 22 }}>{item}</Text>
+                </View>
+              )}
+            </PressableScale>
+          );
+        })}
       </View>
-      <Pressable onPress={save} style={[styles.save, { backgroundColor: theme.tint }]}>
-        <Text style={styles.saveText}>{existing ? 'Save changes' : 'Save habit'}</Text>
-      </Pressable>
+      <PressableScale onPress={save} style={styles.saveWrap}>
+        <LinearGradient colors={Gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.save}>
+          <Text style={styles.saveText}>{existing ? 'Save changes' : 'Save habit'}</Text>
+        </LinearGradient>
+      </PressableScale>
       <StatusBar style={Platform.OS === 'ios' ? 'light' : 'auto'} />
     </View>
   );
@@ -93,34 +107,34 @@ export default function ModalScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
-  title: { fontSize: 24, fontWeight: '800', marginBottom: 16 },
+  title: { fontSize: 24, fontFamily: Fonts.extrabold, marginBottom: 20 },
+  label: { marginBottom: 8, fontFamily: Fonts.bold, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.4 },
   input: {
     borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
   },
-  label: { marginTop: 18, marginBottom: 8, fontWeight: '600' },
   emojis: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
+    marginTop: 20,
     backgroundColor: 'transparent',
   },
   emoji: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
+    width: 50,
+    height: 50,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  saveWrap: { marginTop: 28 },
   save: {
-    marginTop: 24,
-    borderRadius: 16,
-    paddingVertical: 14,
+    borderRadius: 18,
+    paddingVertical: 16,
     alignItems: 'center',
   },
-  saveText: { color: '#fff', fontWeight: '800' },
+  saveText: { color: '#fff', fontFamily: Fonts.extrabold, fontSize: 16 },
 });

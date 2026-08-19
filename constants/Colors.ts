@@ -1,33 +1,58 @@
-const tintLight = '#0D9488';
-const tintDark = '#5EEAD4';
+// Trending 2026 palette: deep indigo/violet base with electric accent
+// gradients for streaks (fire), hydration (water), and rewards (gem).
+export const Gradients = {
+  brand: ['#6D5DF6', '#A855F7'] as const,
+  brandSoft: ['#8B7CFA', '#C084FC'] as const,
+  fire: ['#FF6B4A', '#FFB454'] as const,
+  water: ['#22D3EE', '#3B82F6'] as const,
+  gem: ['#C084FC', '#F472B6'] as const,
+  success: ['#22D3AA', '#34D399'] as const,
+  heroLight: ['#F1EEFF', '#EAF4FF'] as const,
+  heroDark: ['#1D1A38', '#141227'] as const,
+};
+
+const tintLight = '#6D5DF6';
+const tintDark = '#9C8DFF';
 
 export default {
   light: {
-    text: '#134E4A',
-    background: '#F0FDFA',
+    text: '#181425',
+    muted: '#726E8A',
+    background: '#F7F6FC',
+    backgroundAlt: '#EFEEFC',
     card: '#FFFFFF',
-    muted: '#5F7A77',
-    border: '#CCFBF1',
+    cardAlt: '#F4F2FE',
+    border: '#E9E6F7',
+    shadow: 'rgba(109, 93, 246, 0.14)',
     tint: tintLight,
-    water: '#0284C7',
-    streak: '#EA580C',
-    gem: '#7C3AED',
-    danger: '#DC2626',
-    tabIconDefault: '#94A3B8',
+    onTint: '#FFFFFF',
+    water: '#0EA5E9',
+    streak: '#FF6B35',
+    gem: '#A855F7',
+    success: '#10B981',
+    danger: '#EF4444',
+    tabIconDefault: '#B4B0C9',
     tabIconSelected: tintLight,
+    tabBarBg: 'rgba(255,255,255,0.82)',
   },
   dark: {
-    text: '#F0FDFA',
-    background: '#042F2E',
-    card: '#134E4A',
-    muted: '#99F6E4',
-    border: '#115E59',
+    text: '#F3F1FF',
+    muted: '#A29DC2',
+    background: '#0A0916',
+    backgroundAlt: '#100E20',
+    card: '#181530',
+    cardAlt: '#1F1B3B',
+    border: '#2A2549',
+    shadow: 'rgba(0, 0, 0, 0.45)',
     tint: tintDark,
+    onTint: '#120E28',
     water: '#38BDF8',
-    streak: '#FB923C',
-    gem: '#C4B5FD',
+    streak: '#FF9466',
+    gem: '#C9A6FF',
+    success: '#34D399',
     danger: '#F87171',
-    tabIconDefault: '#64748B',
+    tabIconDefault: '#5C577C',
     tabIconSelected: tintDark,
+    tabBarBg: 'rgba(19, 17, 38, 0.78)',
   },
 };

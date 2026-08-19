@@ -1,8 +1,12 @@
-import { Modal, Pressable, StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Modal, Platform, Pressable, StyleSheet } from 'react-native';
+import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
-import Colors from '@/constants/Colors';
+import Colors, { Gradients } from '@/constants/Colors';
+import { Fonts } from '@/constants/Fonts';
 import type { Celebration } from '@/lib/gamification';
 
 type Props = {
@@ -30,21 +34,48 @@ export default function CelebrationModal({ celebration, onDismiss }: Props) {
   return (
     <Modal transparent animationType="fade" visible onRequestClose={onDismiss}>
       <Pressable style={styles.backdrop} onPress={onDismiss}>
-        <Pressable
-          style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}
-          onPress={() => undefined}>
-          <Text style={styles.emoji}>{celebration.dailyGoal ? '🔥' : '🎉'}</Text>
-          <Text style={styles.title}>{celebration.dailyGoal ? 'Nice work!' : 'You earned a reward'}</Text>
-          {lines.map((line) => (
-            <Text key={line} style={[styles.line, { color: theme.muted }]}>
-              {line}
-            </Text>
-          ))}
-          {reward.length ? <Text style={[styles.reward, { color: theme.streak }]}>{reward.join('  ·  ')}</Text> : null}
-          <Pressable style={[styles.button, { backgroundColor: theme.tint }]} onPress={onDismiss}>
-            <Text style={styles.buttonText}>Keep going</Text>
+        <BlurView
+          intensity={Platform.OS === 'ios' ? 40 : 90}
+          tint={scheme === 'dark' ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
+        <Animated.View entering={ZoomIn.springify().damping(14)} style={styles.cardWrap}>
+          <Pressable onPress={() => undefined}>
+            <LinearGradient
+              colors={celebration.dailyGoal ? Gradients.fire : Gradients.brand}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.glowRing}>
+              <View style={[styles.card, { backgroundColor: theme.card }]}>
+                <Animated.Text entering={FadeIn.delay(120)} style={styles.emoji}>
+                  {celebration.dailyGoal ? '🔥' : '🎉'}
+                </Animated.Text>
+                <Text style={[styles.title, { color: theme.text }]}>
+                  {celebration.dailyGoal ? 'Nice work!' : 'You earned a reward'}
+                </Text>
+                {lines.map((line) => (
+                  <Text key={line} style={[styles.line, { color: theme.muted }]}>
+                    {line}
+                  </Text>
+                ))}
+                {reward.length ? (
+                  <LinearGradient colors={Gradients.gem} style={styles.rewardPill}>
+                    <Text style={styles.rewardText}>{reward.join('  ·  ')}</Text>
+                  </LinearGradient>
+                ) : null}
+                <Pressable onPress={onDismiss} style={styles.buttonWrap}>
+                  <LinearGradient
+                    colors={Gradients.brand}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.button}>
+                    <Text style={styles.buttonText}>Keep going</Text>
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            </LinearGradient>
           </Pressable>
-        </Pressable>
+        </Animated.View>
       </Pressable>
     </Modal>
   );
@@ -53,29 +84,37 @@ export default function CelebrationModal({ celebration, onDismiss }: Props) {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
-  card: {
+  cardWrap: {
     width: '100%',
-    borderWidth: 1,
-    borderRadius: 24,
-    padding: 24,
+  },
+  glowRing: {
+    borderRadius: 32,
+    padding: 2,
+  },
+  card: {
+    borderRadius: 30,
+    padding: 28,
     alignItems: 'center',
   },
-  emoji: { fontSize: 42, marginBottom: 8 },
-  title: { fontSize: 22, fontWeight: '800', marginBottom: 8 },
-  line: { fontSize: 14, textAlign: 'center', marginTop: 4 },
-  reward: { marginTop: 12, fontSize: 16, fontWeight: '800' },
+  emoji: { fontSize: 48, marginBottom: 10 },
+  title: { fontSize: 22, fontFamily: Fonts.extrabold, marginBottom: 8 },
+  line: { fontSize: 14, fontFamily: Fonts.semibold, textAlign: 'center', marginTop: 4 },
+  rewardPill: {
+    marginTop: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  rewardText: { color: '#fff', fontFamily: Fonts.extrabold, fontSize: 15 },
+  buttonWrap: { alignSelf: 'stretch', marginTop: 22 },
   button: {
-    marginTop: 20,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    alignSelf: 'stretch',
+    borderRadius: 16,
+    paddingVertical: 14,
     alignItems: 'center',
   },
-  buttonText: { color: '#fff', fontWeight: '800' },
+  buttonText: { color: '#fff', fontFamily: Fonts.extrabold, fontSize: 15 },
 });

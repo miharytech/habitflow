@@ -1,11 +1,14 @@
-import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { Link, router } from 'expo-router';
 
 import AdBanner from '@/components/AdBanner';
 import HabitRow from '@/components/HabitRow';
+import PressableScale from '@/components/PressableScale';
 import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
-import Colors from '@/constants/Colors';
+import Colors, { Gradients } from '@/constants/Colors';
+import { Fonts } from '@/constants/Fonts';
 import { useApp } from '@/context/AppProvider';
 import { FREE_HABIT_LIMIT, REWARD_EXTRA_SLOTS } from '@/lib/types';
 import { isAdMobAvailable } from '@/lib/ads';
@@ -30,7 +33,7 @@ export default function HabitsScreen() {
 
   if (!ready) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: theme.background }]}>
         <Text>Loading…</Text>
       </View>
     );
@@ -69,33 +72,34 @@ export default function HabitsScreen() {
   };
 
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Your habits</Text>
+    <View style={[styles.screen, { backgroundColor: theme.background }]}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={[styles.title, { color: theme.text }]}>Your habits</Text>
         <Text style={[styles.meta, { color: theme.muted }]}>
           {state.habits.length} / {habitLimit} slots · tap Edit to rename · long-press to delete
         </Text>
 
         {state.waterTrackingEnabled ? (
-          <Pressable
+          <PressableScale
             onLongPress={confirmRemoveWater}
-            style={[styles.waterRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <Text style={styles.waterEmoji}>💧</Text>
+            scaleTo={0.98}
+            style={[styles.waterRow, { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow }]}>
+            <LinearGradient colors={Gradients.water} style={styles.waterIcon}>
+              <Text style={styles.waterEmoji}>💧</Text>
+            </LinearGradient>
             <View style={styles.waterBody}>
-              <Text style={styles.name}>Water tracking</Text>
+              <Text style={[styles.name, { color: theme.text }]}>Water tracking</Text>
               <Text style={[styles.waterMeta, { color: theme.muted }]}>
                 {formatMl(waterTodayMl)} / {formatMl(state.waterGoalMl)} · long-press to remove
               </Text>
             </View>
-          </Pressable>
+          </PressableScale>
         ) : (
-          <Pressable
-            style={[styles.cta, { backgroundColor: theme.water, marginBottom: 10 }]}
-            onPress={() => {
-              void setWaterTrackingEnabled(true);
-            }}>
-            <Text style={styles.ctaText}>Add water tracking</Text>
-          </Pressable>
+          <PressableScale onPress={() => void setWaterTrackingEnabled(true)} style={{ marginBottom: 10 }}>
+            <LinearGradient colors={Gradients.water} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
+              <Text style={styles.ctaText}>💧 Add water tracking</Text>
+            </LinearGradient>
+          </PressableScale>
         )}
 
         {state.habits.map((habit) => (
@@ -112,16 +116,18 @@ export default function HabitsScreen() {
 
         {canAddHabit ? (
           <Link href="/modal" asChild>
-            <Pressable style={[styles.cta, { backgroundColor: theme.tint }]}>
-              <Text style={styles.ctaText}>Add habit</Text>
-            </Pressable>
+            <PressableScale>
+              <LinearGradient colors={Gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
+                <Text style={styles.ctaText}>+ Add habit</Text>
+              </LinearGradient>
+            </PressableScale>
           </Link>
         ) : (
-          <Pressable style={[styles.cta, { backgroundColor: theme.water }]} onPress={onUnlock}>
-            <Text style={styles.ctaText}>
-              Watch an ad to unlock {REWARD_EXTRA_SLOTS} more habits
-            </Text>
-          </Pressable>
+          <PressableScale onPress={onUnlock}>
+            <LinearGradient colors={Gradients.gem} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
+              <Text style={styles.ctaText}>🎬 Watch an ad to unlock {REWARD_EXTRA_SLOTS} more habits</Text>
+            </LinearGradient>
+          </PressableScale>
         )}
 
         <Text style={[styles.hint, { color: theme.muted }]}>
@@ -137,27 +143,39 @@ export default function HabitsScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { padding: 20, paddingBottom: 32 },
-  title: { fontSize: 28, fontWeight: '800' },
-  meta: { marginTop: 4, marginBottom: 16 },
+  content: { padding: 20, paddingBottom: 20 },
+  title: { fontSize: 28, fontFamily: Fonts.extrabold },
+  meta: { marginTop: 4, marginBottom: 18, fontFamily: Fonts.medium, fontSize: 13 },
   waterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 14,
     marginBottom: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 1,
   },
-  waterEmoji: { fontSize: 22, marginRight: 12 },
+  waterIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  waterEmoji: { fontSize: 20 },
   waterBody: { flex: 1, backgroundColor: 'transparent' },
-  name: { fontSize: 16, fontWeight: '700' },
-  waterMeta: { marginTop: 2, fontSize: 12 },
+  name: { fontSize: 16, fontFamily: Fonts.bold },
+  waterMeta: { marginTop: 2, fontSize: 12, fontFamily: Fonts.medium },
   cta: {
     marginTop: 8,
-    borderRadius: 16,
-    paddingVertical: 14,
+    borderRadius: 18,
+    paddingVertical: 15,
     alignItems: 'center',
   },
-  ctaText: { color: '#fff', fontWeight: '800' },
-  hint: { marginTop: 12, fontSize: 13, lineHeight: 18 },
+  ctaText: { color: '#fff', fontFamily: Fonts.extrabold, fontSize: 15 },
+  hint: { marginTop: 14, fontSize: 13, lineHeight: 18, fontFamily: Fonts.medium },
 });

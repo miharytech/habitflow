@@ -14,7 +14,7 @@
     "android": {
       "package": "com.habitflow.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0F766E",
+        "backgroundColor": "#0A0916",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -39,7 +39,7 @@
       [
         "expo-notifications",
         {
-          "color": "#0D9488",
+          "color": "#6D5DF6",
           "defaultChannel": "reminders"
         }
       ],

@@ -1,7 +1,10 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { StyleSheet } from 'react-native';
 
+import PressableScale from '@/components/PressableScale';
 import { Text, View } from '@/components/Themed';
-import Colors from '@/constants/Colors';
+import Colors, { Gradients } from '@/constants/Colors';
+import { Fonts } from '@/constants/Fonts';
 import { useColorScheme } from '@/components/useColorScheme';
 import type { Habit } from '@/lib/types';
 
@@ -19,34 +22,39 @@ export default function HabitRow({ habit, done, streak, onToggle, onDelete, onEd
   const theme = Colors[scheme];
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onToggle}
       onLongPress={onDelete}
-      style={({ pressed }) => [styles.row, { backgroundColor: theme.card, borderColor: theme.border, opacity: pressed ? 0.85 : 1 }]}>
-      <View
-        style={[
-          styles.check,
-          { borderColor: done ? theme.tint : theme.border, backgroundColor: done ? theme.tint : 'transparent' },
-        ]}>
-        <Text style={[styles.checkMark, { color: done ? '#fff' : 'transparent' }]}>✓</Text>
-      </View>
+      scaleTo={0.98}
+      style={[
+        styles.row,
+        {
+          backgroundColor: theme.card,
+          borderColor: done ? 'transparent' : theme.border,
+          shadowColor: theme.shadow,
+        },
+      ]}>
+      {done ? (
+        <LinearGradient colors={Gradients.success} style={styles.check}>
+          <Text style={styles.checkMark}>✓</Text>
+        </LinearGradient>
+      ) : (
+        <View style={[styles.check, styles.checkEmpty, { borderColor: theme.border }]} />
+      )}
       <View style={styles.body}>
-        <Text style={styles.name}>
+        <Text style={[styles.name, { color: theme.text, textDecorationLine: done ? 'line-through' : 'none', opacity: done ? 0.6 : 1 }]}>
           {habit.emoji} {habit.name}
         </Text>
-        <Text style={[styles.meta, { color: theme.muted }]}>
-          {streak > 0 ? `${streak}-day streak` : 'Start a streak today'}
+        <Text style={[styles.meta, { color: streak > 0 ? theme.streak : theme.muted }]}>
+          {streak > 0 ? `🔥 ${streak}-day streak` : 'Start a streak today'}
         </Text>
       </View>
       {onEdit ? (
-        <Pressable
-          onPress={onEdit}
-          hitSlop={8}
-          style={({ pressed }) => [styles.edit, { opacity: pressed ? 0.6 : 1 }]}>
-          <Text style={{ color: theme.tint, fontWeight: '700' }}>Edit</Text>
-        </Pressable>
+        <PressableScale onPress={onEdit} hitSlop={8} style={styles.edit}>
+          <Text style={{ color: theme.tint, fontFamily: Fonts.bold, fontSize: 13 }}>Edit</Text>
+        </PressableScale>
       ) : null}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -55,23 +63,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 14,
     marginBottom: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 1,
   },
   check: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 14,
+  },
+  checkEmpty: {
+    borderWidth: 2,
     backgroundColor: 'transparent',
   },
   checkMark: {
     fontSize: 16,
-    fontWeight: '800',
+    fontFamily: Fonts.extrabold,
+    color: '#fff',
     lineHeight: 18,
   },
   body: {
@@ -80,11 +95,12 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: Fonts.bold,
   },
   meta: {
-    marginTop: 2,
+    marginTop: 3,
     fontSize: 12,
+    fontFamily: Fonts.semibold,
   },
   edit: {
     paddingLeft: 8,

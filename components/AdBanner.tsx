@@ -1,9 +1,14 @@
 import { StyleSheet } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
+import { useColorScheme } from '@/components/useColorScheme';
+import Colors from '@/constants/Colors';
+import { Fonts } from '@/constants/Fonts';
 import { getBannerAd, isAdMobAvailable, isExpoGo } from '@/lib/ads';
 
 export default function AdBanner() {
+  const scheme = useColorScheme();
+  const theme = Colors[scheme];
   const ads = getBannerAd();
 
   if (ads) {
@@ -16,8 +21,8 @@ export default function AdBanner() {
   }
 
   return (
-    <View style={styles.placeholder} lightColor="#CCFBF1" darkColor="#115E59">
-      <Text style={styles.placeholderText}>
+    <View style={[styles.placeholder, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+      <Text style={[styles.placeholderText, { color: theme.muted }]}>
         {isExpoGo || !isAdMobAvailable()
           ? 'Ads show in a Play Store / development build'
           : 'Add AdMob unit IDs to show ads'}
@@ -30,16 +35,18 @@ const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
     backgroundColor: 'transparent',
+    marginBottom: 100,
   },
   placeholder: {
     marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 12,
-    paddingVertical: 10,
+    marginBottom: 100,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   placeholderText: {
     fontSize: 12,
-    opacity: 0.7,
+    fontFamily: Fonts.medium,
   },
 });
