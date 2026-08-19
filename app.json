@@ -53,9 +53,9 @@
     ],
     "extra": {
       "ads": {
-        "bannerUnitId": "ca-app-pub-8852886945773718~6644207032",
-        "interstitialUnitId": "ca-app-pub-8852886945773718~6644207032",
-        "rewardedUnitId": "ca-app-pub-8852886945773718~6644207032"
+        "bannerUnitId": "ca-app-pub-8852886945773718/7032501107",
+        "interstitialUnitId": "ca-app-pub-8852886945773718/8154011086",
+        "rewardedUnitId": "ca-app-pub-8852886945773718/3041285204"
       },
       "router": {},
       "eas": {
