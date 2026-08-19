@@ -46,16 +46,16 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "androidAppId": "ca-app-pub-8852886945773718~6644207032",
           "iosAppId": "ca-app-pub-3940256099942544~1458002511"
         }
       ]
     ],
     "extra": {
       "ads": {
-        "bannerUnitId": "",
-        "interstitialUnitId": "",
-        "rewardedUnitId": ""
+        "bannerUnitId": "ca-app-pub-8852886945773718~6644207032",
+        "interstitialUnitId": "ca-app-pub-8852886945773718~6644207032",
+        "rewardedUnitId": "ca-app-pub-8852886945773718~6644207032"
       },
       "router": {},
       "eas": {
