@@ -1,11 +1,33 @@
 import { Platform } from 'react-native';
 
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsModule from 'expo-notifications';
 
 import { STREAK_RISK_HOUR } from '@/lib/types';
 
+type Notifications = typeof NotificationsModule;
+
+// expo-notifications throws while being imported in Expo Go on Android: its
+// DevicePushTokenAutoRegistration side effect registers a push token listener at
+// module scope, and remote push was removed from Expo Go in SDK 53. Only local
+// notifications are used below and those still work, so resolve the module
+// defensively and fall back to a no-op rather than taking the whole app down.
+let cachedModule: Notifications | null | undefined;
+
+function getNotifications(): Notifications | null {
+  if (cachedModule !== undefined) return cachedModule;
+  try {
+    cachedModule = require('expo-notifications') as Notifications;
+  } catch {
+    cachedModule = null;
+    console.warn(
+      '[habitflow] expo-notifications is unavailable, reminders are disabled. Run a development build instead of Expo Go.'
+    );
+  }
+  return cachedModule;
+}
+
 if (Platform.OS !== 'web') {
-  Notifications.setNotificationHandler({
+  getNotifications()?.setNotificationHandler({
     handleNotification: async () => ({
       shouldPlaySound: true,
       shouldSetBadge: false,
@@ -21,10 +43,13 @@ const STREAK_RISK_ID = 'habitflow.streak-risk';
 let syncChain: Promise<void> = Promise.resolve();
 
 export async function requestReminderPermission() {
-  const current = await Notifications.getPermissionsAsync();
-  if (isAllowed(current)) return true;
-  const asked = await Notifications.requestPermissionsAsync();
-  return isAllowed(asked);
+  const notifications = getNotifications();
+  if (!notifications) return false;
+
+  const current = await notifications.getPermissionsAsync();
+  if (isAllowed(notifications, current)) return true;
+  const asked = await notifications.requestPermissionsAsync();
+  return isAllowed(notifications, asked);
 }
 
 export function syncWaterReminders(enabled: boolean, hours: number[]): Promise<boolean> {
@@ -58,7 +83,10 @@ async function applyReminderPlan(plan: {
 }) {
   if (Platform.OS === 'web') return { waterScheduled: !plan.waterEnabled };
 
-  await cancelManagedNotifications();
+  const notifications = getNotifications();
+  if (!notifications) return { waterScheduled: !plan.waterEnabled };
+
+  await cancelManagedNotifications(notifications);
 
   const needsPermission = plan.waterEnabled || plan.streakAtRisk;
   if (!needsPermission) return { waterScheduled: true };
@@ -67,15 +95,15 @@ async function applyReminderPlan(plan: {
   if (!allowed) return { waterScheduled: false };
 
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('reminders', {
+    await notifications.setNotificationChannelAsync('reminders', {
       name: 'HabitFlow reminders',
-      importance: Notifications.AndroidImportance.DEFAULT,
+      importance: notifications.AndroidImportance.DEFAULT,
     });
   }
 
   if (plan.waterEnabled) {
     for (const hour of plan.waterHours) {
-      await Notifications.scheduleNotificationAsync({
+      await notifications.scheduleNotificationAsync({
         identifier: `${WATER_ID_PREFIX}${hour}`,
         content: {
           title: 'Time to drink water',
@@ -83,7 +111,7 @@ async function applyReminderPlan(plan: {
           sound: 'default',
         },
         trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          type: notifications.SchedulableTriggerInputTypes.DAILY,
           hour,
           minute: 0,
           channelId: 'reminders',
@@ -96,7 +124,7 @@ async function applyReminderPlan(plan: {
     const fireAt = nextStreakRiskDate();
     if (fireAt) {
       const days = plan.streakCount;
-      await Notifications.scheduleNotificationAsync({
+      await notifications.scheduleNotificationAsync({
         identifier: STREAK_RISK_ID,
         content: {
           title: days > 0 ? `Your ${days}-day streak is at risk` : 'Your streak is at risk',
@@ -104,7 +132,7 @@ async function applyReminderPlan(plan: {
           sound: 'default',
         },
         trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          type: notifications.SchedulableTriggerInputTypes.DATE,
           date: fireAt,
           channelId: 'reminders',
         },
@@ -121,20 +149,23 @@ function nextStreakRiskDate(from = new Date()) {
   return target;
 }
 
-async function cancelManagedNotifications() {
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+async function cancelManagedNotifications(notifications: Notifications) {
+  const scheduled = await notifications.getAllScheduledNotificationsAsync();
   await Promise.all(
     scheduled
       .filter(
         (item) => item.identifier === STREAK_RISK_ID || item.identifier.startsWith(WATER_ID_PREFIX)
       )
-      .map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier))
+      .map((item) => notifications.cancelScheduledNotificationAsync(item.identifier))
   );
 }
 
-function isAllowed(settings: Notifications.NotificationPermissionsStatus) {
+function isAllowed(
+  notifications: Notifications,
+  settings: NotificationsModule.NotificationPermissionsStatus
+) {
   return (
     settings.granted ||
-    settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
+    settings.ios?.status === notifications.IosAuthorizationStatus.PROVISIONAL
   );
 }
