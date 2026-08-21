@@ -12,10 +12,10 @@
     "primaryColor": "#6D5DF6",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.habitflow.app"
+      "bundleIdentifier": "com.miharytech.habitflow"
     },
     "android": {
-      "package": "com.habitflow.app",
+      "package": "com.miharytech.habitflow",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#6D5DF6",
@@ -72,8 +72,8 @@
         "interstitialUnitId": "ca-app-pub-8852886945773718/8154011086",
         "rewardedUnitId": "ca-app-pub-8852886945773718/3041285204"
       },
-      "privacyPolicyUrl": "",
-      "supportEmail": "",
+      "privacyPolicyUrl": "https://miharytech.github.io/habitflow/",
+      "supportEmail": "miharyjoel@gmail.com",
       "router": {},
       "eas": {
         "projectId": "ad3e0fc6-6efb-4180-94c6-2f2e214c4230"
