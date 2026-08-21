@@ -26,6 +26,10 @@ export default function HabitRow({ habit, done, streak, onToggle, onDelete, onEd
       onPress={onToggle}
       onLongPress={onDelete}
       scaleTo={0.98}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: done }}
+      accessibilityLabel={`${habit.name}${streak > 0 ? `, ${streak} day streak` : ''}`}
+      accessibilityHint={onDelete ? 'Double tap to toggle, long press to delete' : undefined}
       style={[
         styles.row,
         {
@@ -50,7 +54,12 @@ export default function HabitRow({ habit, done, streak, onToggle, onDelete, onEd
         </Text>
       </View>
       {onEdit ? (
-        <PressableScale onPress={onEdit} hitSlop={8} style={styles.edit}>
+        <PressableScale
+          onPress={onEdit}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Edit ${habit.name}`}
+          style={styles.edit}>
           <Text style={{ color: theme.tint, fontFamily: Fonts.bold, fontSize: 13 }}>Edit</Text>
         </PressableScale>
       ) : null}

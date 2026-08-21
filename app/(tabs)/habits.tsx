@@ -61,14 +61,13 @@ export default function HabitsScreen() {
 
   const onUnlock = async () => {
     const ok = await unlockMoreHabits();
-    if (!ok) {
-      Alert.alert(
-        'Reward unavailable',
-        isAdMobAvailable()
-          ? 'The ad did not finish. Try again in a moment.'
-          : 'Rewarded ads work in a development or Play Store build, not Expo Go. For now your 4 starter habits stay free.'
-      );
-    }
+    if (ok) return;
+    Alert.alert(
+      'Reward unavailable',
+      isAdMobAvailable()
+        ? 'The ad did not finish loading. Please check your connection and try again in a moment.'
+        : `No ad is available right now. Your ${FREE_HABIT_LIMIT} free habits stay available.`
+    );
   };
 
   return (
@@ -83,6 +82,9 @@ export default function HabitsScreen() {
           <PressableScale
             onLongPress={confirmRemoveWater}
             scaleTo={0.98}
+            accessibilityRole="button"
+            accessibilityLabel="Water tracking"
+            accessibilityHint="Long press to remove water tracking"
             style={[styles.waterRow, { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow }]}>
             <LinearGradient colors={Gradients.water} style={styles.waterIcon}>
               <Text style={styles.waterEmoji}>💧</Text>
@@ -95,7 +97,11 @@ export default function HabitsScreen() {
             </View>
           </PressableScale>
         ) : (
-          <PressableScale onPress={() => void setWaterTrackingEnabled(true)} style={{ marginBottom: 10 }}>
+          <PressableScale
+            onPress={() => void setWaterTrackingEnabled(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Add water tracking"
+            style={{ marginBottom: 10 }}>
             <LinearGradient colors={Gradients.water} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
               <Text style={styles.ctaText}>💧 Add water tracking</Text>
             </LinearGradient>
@@ -116,14 +122,17 @@ export default function HabitsScreen() {
 
         {canAddHabit ? (
           <Link href="/modal" asChild>
-            <PressableScale>
+            <PressableScale accessibilityRole="button" accessibilityLabel="Add habit">
               <LinearGradient colors={Gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
                 <Text style={styles.ctaText}>+ Add habit</Text>
               </LinearGradient>
             </PressableScale>
           </Link>
         ) : (
-          <PressableScale onPress={onUnlock}>
+          <PressableScale
+            onPress={onUnlock}
+            accessibilityRole="button"
+            accessibilityLabel={`Watch an ad to unlock ${REWARD_EXTRA_SLOTS} more habit slots`}>
             <LinearGradient colors={Gradients.gem} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
               <Text style={styles.ctaText}>🎬 Watch an ad to unlock {REWARD_EXTRA_SLOTS} more habits</Text>
             </LinearGradient>
@@ -131,8 +140,8 @@ export default function HabitsScreen() {
         )}
 
         <Text style={[styles.hint, { color: theme.muted }]}>
-          {FREE_HABIT_LIMIT} habits are free. Extra slots unlock with a rewarded ad — this is how
-          the app earns money. Water tracking does not use a slot.
+          {FREE_HABIT_LIMIT} habits are free. Watching a short ad unlocks {REWARD_EXTRA_SLOTS} more
+          slots and keeps HabitFlow free for everyone. Water tracking never uses a slot.
         </Text>
       </ScrollView>
       <AdBanner />

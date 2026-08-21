@@ -10,6 +10,7 @@ import {
   celebrationIsEmpty,
   dailyGoalProgress,
   habitStreak,
+  hasTrackableContent,
   isDailyGoalMet,
   settleStreak,
   type Celebration,
@@ -54,6 +55,7 @@ type AppContextValue = {
   setWaterTrackingEnabled: (enabled: boolean) => Promise<void>;
   setDailyGoalCount: (count: DailyGoalCount) => void;
   setIncludeWaterInDailyGoal: (enabled: boolean) => void;
+  resetAllData: () => Promise<void>;
   dismissCelebration: () => void;
 };
 
@@ -90,59 +92,76 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [state, setState] = useState<PersistedState | null>(null);
   const [celebration, setCelebration] = useState<Celebration | null>(null);
-  const stateRef = useRef(state);
-  stateRef.current = state;
+  const stateRef = useRef<PersistedState | null>(null);
   const pendingWaterAd = useRef(false);
   const today = useLocalToday();
 
-  const update = useCallback((recipe: (current: PersistedState) => PersistedState) => {
-    setState((current) => (current ? recipe(current) : current));
+  // Every write goes through `commit` so `stateRef` stays the single source of
+  // truth callers can read back synchronously. Deriving the next state inside a
+  // `setState` updater instead would be unreliable: React only evaluates an
+  // updater eagerly when no other update is pending, so anything a caller reads
+  // right afterwards (a celebration, an unlock result) could silently be lost.
+  const commit = useCallback((next: PersistedState) => {
+    stateRef.current = next;
+    setState(next);
   }, []);
+
+  const update = useCallback(
+    (recipe: (current: PersistedState) => PersistedState) => {
+      const current = stateRef.current;
+      if (!current) return;
+      commit(recipe(current));
+    },
+    [commit]
+  );
 
   const applyMutation = useCallback(
     (
       recipe: (current: PersistedState) => PersistedState,
       options?: { celebrate?: boolean; extraXp?: number }
     ): Celebration | null => {
-      let nextCelebration: Celebration | null = null;
-      setState((current) => {
-        if (!current) return current;
-        const previousXp = current.xpTotal;
-        let mutated = recipe(current);
-        if (options?.extraXp) {
-          mutated = { ...mutated, xpTotal: Math.max(0, mutated.xpTotal + options.extraXp) };
-        }
-        const awarded = applyTodayAwards(mutated, today, previousXp);
-        awarded.celebration = {
-          ...awarded.celebration,
-          xpDelta: awarded.celebration.xpDelta + (options?.extraXp ?? 0),
-        };
-        if (options?.celebrate && !celebrationIsEmpty(awarded.celebration)) {
-          nextCelebration = awarded.celebration;
-        }
-        return awarded.state;
-      });
-      if (nextCelebration) {
+      const current = stateRef.current;
+      if (!current) return null;
+
+      const previousXp = current.xpTotal;
+      let mutated = recipe(current);
+      if (options?.extraXp) {
+        mutated = { ...mutated, xpTotal: Math.max(0, mutated.xpTotal + options.extraXp) };
+      }
+      const awarded = applyTodayAwards(mutated, today, previousXp);
+      const nextCelebration: Celebration = {
+        ...awarded.celebration,
+        xpDelta: awarded.celebration.xpDelta + (options?.extraXp ?? 0),
+      };
+      commit(awarded.state);
+
+      if (options?.celebrate && !celebrationIsEmpty(nextCelebration)) {
         setCelebration(nextCelebration);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+        return nextCelebration;
       }
-      return nextCelebration;
+      return null;
     },
-    [today]
+    [commit, today]
   );
 
   useEffect(() => {
+    let cancelled = false;
     loadState()
       .then((loaded) => {
-        const settled = applyTodayAwards(settleStreak(loaded, todayKey()), todayKey()).state;
-        setState(settled);
-        setReady(true);
+        const day = todayKey();
+        return applyTodayAwards(settleStreak(loaded, day), day).state;
       })
-      .catch(() => {
-        setState(emptyState());
+      .catch(() => emptyState())
+      .then((next) => {
+        if (cancelled) return;
+        commit(next);
         setReady(true);
       });
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [commit]);
 
   useEffect(() => {
     if (!ready) return;
@@ -154,21 +173,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     scheduleSave(state);
   }, [state]);
 
-  useEffect(() => {
-    if (!ready || !state) return;
-    const goalMet = isDailyGoalMet(state, today);
-    const waterOn = state.waterTrackingEnabled && state.remindersEnabled;
-    void syncReminderPlan({
-      waterEnabled: waterOn,
+  // Rescheduling means cancelling and re-registering every reminder, so key the
+  // effect on the plan's contents rather than on `state`: a single sip of water
+  // used to tear down and rebuild the whole notification set.
+  const reminderPlan = useMemo(() => {
+    if (!state) return null;
+    return {
+      waterEnabled: state.waterTrackingEnabled && state.remindersEnabled,
       waterHours: state.reminderHours,
-      streakAtRisk: state.appStreak > 0 && !goalMet && hasAnythingToDo(state),
+      streakAtRisk:
+        state.appStreak > 0 && !isDailyGoalMet(state, today) && hasTrackableContent(state),
       streakCount: state.appStreak,
-    }).then((result) => {
-      if (waterOn && !result.waterScheduled) {
-        setState((current) => (current ? { ...current, remindersEnabled: false } : current));
+    };
+  }, [state, today]);
+  const reminderPlanKey = reminderPlan ? JSON.stringify(reminderPlan) : '';
+  const reminderPlanRef = useRef(reminderPlan);
+  reminderPlanRef.current = reminderPlan;
+
+  useEffect(() => {
+    const plan = reminderPlanRef.current;
+    if (!ready || !plan) return;
+    void syncReminderPlan(plan).then((result) => {
+      if (plan.waterEnabled && !result.waterScheduled) {
+        update((prev) => ({ ...prev, remindersEnabled: false }));
       }
     });
-  }, [ready, state, today]);
+  }, [ready, reminderPlanKey, update]);
 
   const waterTodayMl = useMemo(() => {
     if (!state) return 0;
@@ -386,12 +416,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
           { celebrate: true }
         );
       },
+      resetAllData: async () => {
+        await syncWaterReminders(false, stateRef.current?.reminderHours ?? DEFAULT_REMINDER_HOURS);
+        setCelebration(null);
+        commit(emptyState());
+      },
       dismissCelebration,
     };
   }, [
     applyMutation,
     canAddHabit,
     celebration,
+    commit,
     dismissCelebration,
     habitLimit,
     ready,
@@ -417,8 +453,4 @@ export function useHabits(): Habit[] {
 export function useDailyProgress() {
   const { state, today } = useApp();
   return dailyGoalProgress(state, today);
-}
-
-function hasAnythingToDo(state: PersistedState) {
-  return state.habits.length > 0 || state.waterTrackingEnabled;
 }

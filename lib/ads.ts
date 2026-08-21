@@ -4,12 +4,33 @@ import { NativeModules, Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 type BannerSize = { ANCHORED_ADAPTIVE_BANNER: string };
+type ConsentInfo = {
+  status: string;
+  canRequestAds: boolean;
+  privacyOptionsRequirementStatus: string;
+  isConsentFormAvailable: boolean;
+};
 type AdsSdk = {
   TestIds: { ADAPTIVE_BANNER: string; INTERSTITIAL: string; REWARDED: string };
   AdEventType: { LOADED: string; CLOSED: string; ERROR: string };
   RewardedAdEventType: { LOADED: string; EARNED_REWARD: string };
   BannerAdSize: BannerSize;
   BannerAd: ComponentType<{ unitId: string; size: string }>;
+  MaxAdContentRating: { G: string };
+  AdsConsentPrivacyOptionsRequirementStatus: { REQUIRED: string };
+  AdsConsent: {
+    gatherConsent: () => Promise<ConsentInfo>;
+    getConsentInfo: () => Promise<ConsentInfo>;
+    showPrivacyOptionsForm: () => Promise<ConsentInfo>;
+  };
+  default: () => {
+    initialize: () => Promise<unknown>;
+    setRequestConfiguration: (config: {
+      maxAdContentRating?: string;
+      tagForChildDirectedTreatment?: boolean;
+      tagForUnderAgeOfConsent?: boolean;
+    }) => Promise<void>;
+  };
   InterstitialAd: {
     createForAdRequest: (unitId: string, options?: { keywords?: string[] }) => AdInstance;
   };
@@ -64,9 +85,106 @@ function resolveUnitId(sdk: AdsSdk, kind: AdKind) {
   return null;
 }
 
-export async function showInterstitial() {
+let initialization: Promise<boolean> | null = null;
+let consent: ConsentInfo | null = null;
+const readyListeners = new Set<() => void>();
+
+function notifyReady() {
+  for (const listener of [...readyListeners]) listener();
+}
+
+export function subscribeToAdsReady(listener: () => void) {
+  readyListeners.add(listener);
+  return () => {
+    readyListeners.delete(listener);
+  };
+}
+
+/**
+ * True once the Google Mobile Ads SDK is initialized and the user's consent
+ * choice allows an ad request. Until then nothing may be loaded — requesting
+ * ads before the UMP form is answered violates AdMob's EEA consent policy.
+ */
+export function canRequestAds() {
+  return consent?.canRequestAds === true;
+}
+
+/** The user is in a region where a "Privacy options" entry point is mandatory. */
+export function privacyOptionsRequired() {
+  const sdk = getSdk();
+  if (!sdk || !consent) return false;
+  return (
+    consent.privacyOptionsRequirementStatus ===
+    sdk.AdsConsentPrivacyOptionsRequirementStatus.REQUIRED
+  );
+}
+
+export async function showPrivacyOptions() {
   const sdk = getSdk();
   if (!sdk) return false;
+  try {
+    consent = await sdk.AdsConsent.showPrivacyOptionsForm();
+    notifyReady();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Gathers consent, applies the app-wide request configuration, then starts the
+ * SDK. Safe to call repeatedly: it succeeds once and is then a no-op, but a
+ * failed attempt (usually a consent form that could not be fetched offline) is
+ * discarded so the next call can retry rather than leaving ads off for the rest
+ * of the session.
+ */
+export function initializeAds() {
+  if (!initialization) {
+    initialization = runInitialization().then((ok) => {
+      if (!ok) initialization = null;
+      return ok;
+    });
+  }
+  return initialization;
+}
+
+async function runInitialization() {
+  const sdk = getSdk();
+  if (!sdk) return false;
+
+  try {
+    // Presents the Google-hosted consent form when the user's region needs one.
+    consent = await sdk.AdsConsent.gatherConsent();
+  } catch {
+    // A consent failure must not take ads down outside the EEA, where the form
+    // is not required; fall back to whatever status the SDK already holds.
+    try {
+      consent = await sdk.AdsConsent.getConsentInfo();
+    } catch {
+      consent = null;
+    }
+  }
+
+  try {
+    const mobileAds = sdk.default();
+    // HabitFlow is a general wellness app, so keep ad content family-safe.
+    await mobileAds.setRequestConfiguration({
+      maxAdContentRating: sdk.MaxAdContentRating.G,
+      tagForChildDirectedTreatment: false,
+      tagForUnderAgeOfConsent: false,
+    });
+    await mobileAds.initialize();
+  } catch {
+    return false;
+  }
+
+  notifyReady();
+  return canRequestAds();
+}
+
+export async function showInterstitial() {
+  const sdk = getSdk();
+  if (!sdk || !canRequestAds()) return false;
   const unitId = resolveUnitId(sdk, 'interstitial');
   if (!unitId) return false;
 
@@ -100,7 +218,7 @@ export async function showInterstitial() {
 
 export async function showRewardedAd() {
   const sdk = getSdk();
-  if (!sdk) return false;
+  if (!sdk || !canRequestAds()) return false;
   const unitId = resolveUnitId(sdk, 'rewarded');
   if (!unitId) return false;
 
@@ -135,7 +253,7 @@ export async function showRewardedAd() {
 
 export function getBannerAd() {
   const sdk = getSdk();
-  if (!sdk) return null;
+  if (!sdk || !canRequestAds()) return null;
   const unitId = resolveUnitId(sdk, 'banner');
   if (!unitId) return null;
   return {

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, TextInput, Platform } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StatusBar } from 'expo-status-bar';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 
 import PressableScale from '@/components/PressableScale';
@@ -51,7 +50,13 @@ export default function ModalScreen() {
     }
     if (!canAddHabit) {
       const unlocked = await unlockMoreHabits();
-      if (!unlocked) return;
+      if (!unlocked) {
+        Alert.alert(
+          'Habit limit reached',
+          'Watch a short ad from the Habits tab to unlock more slots.'
+        );
+        return;
+      }
     }
     const result = addHabit(name, emoji);
     if (result === 'ok') {
@@ -62,7 +67,13 @@ export default function ModalScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: theme.background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
       <Text style={[styles.title, { color: theme.text }]}>{existing ? 'Edit habit' : 'New habit'}</Text>
       <Text style={[styles.label, { color: theme.muted }]}>Name</Text>
       <TextInput
@@ -71,6 +82,10 @@ export default function ModalScreen() {
         placeholder="e.g. No sugar"
         placeholderTextColor={theme.muted}
         maxLength={MAX_HABIT_NAME_LENGTH}
+        accessibilityLabel="Habit name"
+        autoFocus={!existing}
+        returnKeyType="done"
+        onSubmitEditing={() => void save()}
         style={[
           styles.input,
           { color: theme.text, borderColor: theme.border, backgroundColor: theme.card, fontFamily: Fonts.semibold },
@@ -81,7 +96,13 @@ export default function ModalScreen() {
         {EMOJIS.map((item) => {
           const active = item === emoji;
           return (
-            <PressableScale key={item} onPress={() => setEmoji(item)} scaleTo={0.9}>
+            <PressableScale
+              key={item}
+              onPress={() => setEmoji(item)}
+              scaleTo={0.9}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`Icon ${item}`}>
               {active ? (
                 <LinearGradient colors={Gradients.brand} style={styles.emoji}>
                   <Text style={{ fontSize: 22 }}>{item}</Text>
@@ -95,18 +116,22 @@ export default function ModalScreen() {
           );
         })}
       </View>
-      <PressableScale onPress={save} style={styles.saveWrap}>
+      <PressableScale
+        onPress={save}
+        style={styles.saveWrap}
+        accessibilityRole="button"
+        accessibilityLabel={existing ? 'Save changes' : 'Save habit'}>
         <LinearGradient colors={Gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.save}>
           <Text style={styles.saveText}>{existing ? 'Save changes' : 'Save habit'}</Text>
         </LinearGradient>
       </PressableScale>
-      <StatusBar style={Platform.OS === 'ios' ? 'light' : 'auto'} />
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
+  container: { padding: 20, paddingBottom: 40 },
   title: { fontSize: 24, fontFamily: Fonts.extrabold, marginBottom: 20 },
   label: { marginBottom: 8, fontFamily: Fonts.bold, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.4 },
   input: {

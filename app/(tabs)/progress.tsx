@@ -46,8 +46,8 @@ export default function ProgressScreen() {
     Alert.alert(
       'Reward unavailable',
       isAdMobAvailable()
-        ? 'The ad did not finish. Try again in a moment.'
-        : 'Rewarded ads work in a development or Play Store build, not Expo Go.'
+        ? 'The ad did not finish loading. Please check your connection and try again in a moment.'
+        : 'No ad is available right now. Please try again later.'
     );
   };
 
@@ -66,9 +66,14 @@ export default function ProgressScreen() {
             {days.map((date) => {
               const met = isDailyGoalMet(state, date);
               const frozen = !met && state.lastStreakDate === date;
-              const weekday = WEEKDAYS[addDaysIndex(date)];
+              const weekday = WEEKDAYS[weekdayIndex(date)];
+              const status = met ? 'goal met' : frozen ? 'streak freeze used' : 'goal missed';
               return (
-                <View key={date} style={styles.day}>
+                <View
+                  key={date}
+                  accessible
+                  accessibilityLabel={`${date}: ${status}`}
+                  style={styles.day}>
                   <Text style={[styles.dayLabel, { color: theme.muted }]}>{weekday}</Text>
                   {met ? (
                     <LinearGradient colors={Gradients.fire} style={styles.dot}>
@@ -110,7 +115,10 @@ export default function ProgressScreen() {
           </Text>
         </View>
 
-        <PressableScale onPress={onFreeze}>
+        <PressableScale
+          onPress={onFreeze}
+          accessibilityRole="button"
+          accessibilityLabel="Watch an ad for a streak freeze">
           <LinearGradient colors={Gradients.fire} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
             <Text style={styles.ctaText}>❄️ Watch an ad for a streak freeze</Text>
           </LinearGradient>
@@ -123,6 +131,8 @@ export default function ProgressScreen() {
             return (
               <View
                 key={item.id}
+                accessible
+                accessibilityLabel={`${item.title}: ${item.description}. ${on ? 'Unlocked' : 'Locked'}`}
                 style={[
                   styles.badge,
                   {
@@ -153,7 +163,7 @@ export default function ProgressScreen() {
   );
 }
 
-function addDaysIndex(date: string) {
+function weekdayIndex(date: string) {
   const [y, m, d] = date.split('-').map(Number);
   return new Date(y, m - 1, d).getDay();
 }

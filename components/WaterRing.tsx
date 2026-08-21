@@ -11,7 +11,6 @@ type Props = {
   goalMl: number;
   size?: number;
   trackColor: string;
-  progressColor: string;
   textColor: string;
   mutedColor: string;
 };
@@ -32,8 +31,19 @@ export default function WaterRing({
   const percent = Math.round(progress * 100);
 
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={size} height={size} style={{ position: 'absolute' }}>
+    <View
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={`Water: ${formatMl(ml)} of ${formatMl(goalMl)}, ${percent} percent`}
+      accessibilityValue={{ min: 0, max: 100, now: percent }}
+      style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      {/* The whole canvas is rotated so the arc starts at 12 o'clock. Rotating
+          the <Circle> instead needs `rotation`/`origin`, which react-native-svg
+          forwards to the DOM as an invalid `transform-origin` on web. */}
+      <Svg
+        width={size}
+        height={size}
+        style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
         <Defs>
           <SvgLinearGradient id="waterGradient" x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0" stopColor={Gradients.water[0]} />
@@ -58,11 +68,11 @@ export default function WaterRing({
           strokeLinecap="round"
           strokeDasharray={`${circumference} ${circumference}`}
           strokeDashoffset={offset}
-          rotation={-90}
-          origin={`${size / 2}, ${size / 2}`}
         />
       </Svg>
-      <Text style={{ fontSize: 21 }}>💧</Text>
+      <Text style={{ fontSize: 21 }} accessibilityElementsHidden importantForAccessibility="no">
+        💧
+      </Text>
       <Text style={{ fontSize: 38, fontFamily: Fonts.extrabold, color: textColor, marginTop: 2 }}>
         {formatMl(ml)}
       </Text>

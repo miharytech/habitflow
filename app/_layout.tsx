@@ -1,7 +1,10 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import * as SystemUI from 'expo-system-ui';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 import {
   PlusJakartaSans_400Regular,
@@ -15,6 +18,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import CelebrationModal from '@/components/CelebrationModal';
 import Colors from '@/constants/Colors';
 import { AppProvider, useApp } from '@/context/AppProvider';
+import { initializeAds } from '@/lib/ads';
 
 export {
   ErrorBoundary,
@@ -28,7 +32,6 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
     PlusJakartaSans_600SemiBold,
@@ -46,14 +49,21 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
+  // Gather ad consent and start the ads SDK once, off the render path.
+  useEffect(() => {
+    void initializeAds();
+  }, []);
+
   if (!loaded) {
     return null;
   }
 
   return (
-    <AppProvider>
-      <RootLayoutNav />
-    </AppProvider>
+    <SafeAreaProvider>
+      <AppProvider>
+        <RootLayoutNav />
+      </AppProvider>
+    </SafeAreaProvider>
   );
 }
 
@@ -61,6 +71,12 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const { celebration, dismissCelebration } = useApp();
   const theme = Colors[colorScheme];
+
+  // Paints the window behind React's views so rotation and over-scroll never
+  // flash white on a dark theme.
+  useEffect(() => {
+    void SystemUI.setBackgroundColorAsync(theme.background);
+  }, [theme.background]);
 
   const navTheme = {
     ...(colorScheme === 'dark' ? DarkTheme : DefaultTheme),
@@ -87,6 +103,7 @@ function RootLayoutNav() {
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Habit' }} />
       </Stack>
       <CelebrationModal celebration={celebration} onDismiss={dismissCelebration} />
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
     </ThemeProvider>
   );
 }

@@ -67,6 +67,15 @@ async function tap(text) {
   await dismissOverlay();
 }
 
+// Switches, sliders and icon-only buttons carry no visible text, so `tap`
+// cannot reach them. Address them by accessible role + name instead.
+async function role(spec) {
+  const [name, ...rest] = spec.split(/\s+/);
+  await page.getByRole(name, { name: new RegExp(rest.join(' '), 'i') }).first().click();
+  await page.waitForTimeout(500);
+  await dismissOverlay();
+}
+
 async function screenshot(name) {
   const file = path.join(SHOT_DIR, `${name || 'shot'}.png`);
   await page.screenshot({ path: file });
@@ -96,6 +105,10 @@ rl.on('line', async (line) => {
       case 'tap':
         await tap(arg);
         console.log('OK tap', arg);
+        break;
+      case 'role':
+        await role(arg);
+        console.log('OK role', arg);
         break;
       case 'dismiss':
         await dismissOverlay();

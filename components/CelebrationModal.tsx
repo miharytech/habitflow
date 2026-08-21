@@ -33,14 +33,16 @@ export default function CelebrationModal({ celebration, onDismiss }: Props) {
 
   return (
     <Modal transparent animationType="fade" visible onRequestClose={onDismiss}>
-      <Pressable style={styles.backdrop} onPress={onDismiss}>
+      {/* The backdrop is a plain dismiss surface, not a control: giving it a
+          button role would nest the "Keep going" button inside a button. */}
+      <Pressable style={styles.backdrop} onPress={onDismiss} accessibilityViewIsModal>
         <BlurView
           intensity={Platform.OS === 'ios' ? 40 : 90}
           tint={scheme === 'dark' ? 'dark' : 'light'}
           style={StyleSheet.absoluteFill}
         />
         <Animated.View entering={ZoomIn.springify().damping(14)} style={styles.cardWrap}>
-          <Pressable onPress={() => undefined}>
+          <Pressable onPress={() => undefined} accessible={false}>
             <LinearGradient
               colors={celebration.dailyGoal ? Gradients.fire : Gradients.brand}
               start={{ x: 0, y: 0 }}
@@ -63,7 +65,11 @@ export default function CelebrationModal({ celebration, onDismiss }: Props) {
                     <Text style={styles.rewardText}>{reward.join('  ·  ')}</Text>
                   </LinearGradient>
                 ) : null}
-                <Pressable onPress={onDismiss} style={styles.buttonWrap}>
+                <Pressable
+                  onPress={onDismiss}
+                  accessibilityRole="button"
+                  accessibilityLabel="Keep going"
+                  style={styles.buttonWrap}>
                   <LinearGradient
                     colors={Gradients.brand}
                     start={{ x: 0, y: 0 }}

@@ -44,10 +44,26 @@ const ACHIEVEMENT_BY_ID = new Map(ACHIEVEMENTS.map((item) => [item.id, item]));
 const STREAK_FREEZE_MILESTONES = [7, 30];
 const MAX_SETTLE_DAYS = 400;
 
-export function requiredHabitCount(state: PersistedState) {
-  if (state.habits.length === 0) return 0;
-  if (state.dailyGoalCount === 'all') return state.habits.length;
-  return Math.min(state.dailyGoalCount, state.habits.length);
+/**
+ * The water goal is one of the day's tasks when the user opted in from
+ * Settings, and also whenever it is the only thing being tracked — otherwise
+ * a water-only setup could never reach a daily goal at all.
+ */
+export function waterCountsAsTask(state: PersistedState) {
+  if (!state.waterTrackingEnabled) return false;
+  return state.includeWaterInDailyGoal || state.habits.length === 0;
+}
+
+/** Every task that can be ticked off today: each habit, plus water when it counts. */
+export function trackableTaskCount(state: PersistedState) {
+  return state.habits.length + (waterCountsAsTask(state) ? 1 : 0);
+}
+
+export function requiredTaskCount(state: PersistedState) {
+  const total = trackableTaskCount(state);
+  if (total === 0) return 0;
+  if (state.dailyGoalCount === 'all') return total;
+  return Math.min(state.dailyGoalCount, total);
 }
 
 export function hasTrackableContent(state: PersistedState) {
@@ -74,13 +90,16 @@ export function isWaterGoalMet(state: PersistedState, date: string) {
   return waterMlOnDay(state, date) >= state.waterGoalMl;
 }
 
+/** Habits ticked off today plus the water goal, when water counts as a task. */
+export function tasksDoneOn(state: PersistedState, date: string) {
+  const water = waterCountsAsTask(state) && isWaterGoalMet(state, date) ? 1 : 0;
+  return habitsDoneOn(state, date) + water;
+}
+
 export function isDailyGoalMet(state: PersistedState, date: string) {
-  if (!hasTrackableContent(state)) return false;
-  const need = requiredHabitCount(state);
-  if (need === 0 && state.waterTrackingEnabled) return isWaterGoalMet(state, date);
-  if (habitsDoneOn(state, date) < need) return false;
-  if (state.waterTrackingEnabled && state.includeWaterInDailyGoal) return isWaterGoalMet(state, date);
-  return true;
+  const need = requiredTaskCount(state);
+  if (need === 0) return false;
+  return tasksDoneOn(state, date) >= need;
 }
 
 export function isPerfectDay(state: PersistedState, date: string) {
@@ -94,25 +113,36 @@ export function isPerfectDay(state: PersistedState, date: string) {
 }
 
 export type DailyGoalProgress = {
+  /** Tasks finished today, water included when it counts as one. */
   done: number;
+  /** Tasks needed to hit the daily goal. */
   need: number;
-  waterRequired: boolean;
+  /** Every task available today. */
+  total: number;
+  habitsDone: number;
+  habitCount: number;
+  /** Water is one of today's tasks, so finishing it moves the goal forward. */
+  waterCounts: boolean;
   waterMet: boolean;
   met: boolean;
   perfect: boolean;
 };
 
 export function dailyGoalProgress(state: PersistedState, date: string): DailyGoalProgress {
-  const need = requiredHabitCount(state);
-  const done = habitsDoneOn(state, date);
-  const waterRequired = state.waterTrackingEnabled && (state.includeWaterInDailyGoal || need === 0);
+  const waterCounts = waterCountsAsTask(state);
   const waterMet = isWaterGoalMet(state, date);
+  const habitsDone = habitsDoneOn(state, date);
+  const need = requiredTaskCount(state);
+  const done = habitsDone + (waterCounts && waterMet ? 1 : 0);
   return {
     done,
     need,
-    waterRequired,
+    total: trackableTaskCount(state),
+    habitsDone,
+    habitCount: state.habits.length,
+    waterCounts,
     waterMet,
-    met: isDailyGoalMet(state, date),
+    met: need > 0 && done >= need,
     perfect: isPerfectDay(state, date),
   };
 }

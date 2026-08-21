@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
-import { ScrollView, StyleSheet } from 'react-native';
+import { useMemo } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import AdBanner from '@/components/AdBanner';
@@ -14,40 +15,38 @@ import WaterRing from '@/components/WaterRing';
 import Colors, { Gradients } from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
 import { useApp, useDailyProgress } from '@/context/AppProvider';
-import { formatMl, greeting } from '@/lib/dates';
+import { formatMl, greeting, isOnLocalDay } from '@/lib/dates';
 import { QUICK_ADD_ML } from '@/lib/types';
 
 export default function TodayScreen() {
   const scheme = useColorScheme();
   const theme = Colors[scheme];
-  const {
-    ready,
-    state,
-    waterTodayMl,
-    addWater,
-    undoWater,
-    toggleHabit,
-    isHabitDone,
-    streak,
-  } = useApp();
+  const { ready, state, today, waterTodayMl, addWater, undoWater, toggleHabit, isHabitDone, streak } =
+    useApp();
   const progress = useDailyProgress();
+
+  const canUndoWater = useMemo(
+    () => state.waterLogs.some((log) => isOnLocalDay(log.at, today)),
+    [state.waterLogs, today]
+  );
 
   if (!ready) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Text>Loading HabitFlow…</Text>
+        <ActivityIndicator color={theme.tint} />
+        <Text style={[styles.loading, { color: theme.muted }]}>Loading HabitFlow…</Text>
       </View>
     );
   }
 
   const remaining = Math.max(state.waterGoalMl - waterTodayMl, 0);
-  const subtitle = state.waterTrackingEnabled
-    ? remaining === 0
-      ? 'Water goal complete. Nice work.'
-      : `${formatMl(remaining)} left today`
-    : progress.met
-      ? 'Daily goal complete. Nice work.'
-      : 'Check off habits to keep your streak.';
+  const subtitle = progress.met
+    ? 'Daily goal complete. Nice work.'
+    : progress.need === 0
+      ? 'Add a habit to start your first streak.'
+      : state.waterTrackingEnabled && remaining > 0
+        ? `${formatMl(remaining)} of water left · ${progress.done}/${progress.need} tasks done`
+        : `${progress.done}/${progress.need} tasks done today`;
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.background }]}>
@@ -58,18 +57,33 @@ export default function TodayScreen() {
         <DailyGoalBar progress={progress} />
 
         {state.waterTrackingEnabled ? (
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow }]}>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow },
+            ]}>
+            {progress.waterCounts ? (
+              <View style={[styles.badge, { backgroundColor: theme.backgroundAlt }]}>
+                <Text style={[styles.badgeText, { color: theme.muted }]}>
+                  Counts as one daily task
+                </Text>
+              </View>
+            ) : null}
             <WaterRing
               ml={waterTodayMl}
               goalMl={state.waterGoalMl}
               trackColor={theme.backgroundAlt}
-              progressColor={theme.water}
               textColor={theme.text}
               mutedColor={theme.muted}
             />
             <View style={styles.quickRow}>
               {QUICK_ADD_ML.map((ml) => (
-                <PressableScale key={ml} onPress={() => addWater(ml)} scaleTo={0.9}>
+                <PressableScale
+                  key={ml}
+                  onPress={() => addWater(ml)}
+                  scaleTo={0.9}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add ${ml} millilitres of water`}>
                   <LinearGradient
                     colors={Gradients.water}
                     start={{ x: 0, y: 0 }}
@@ -80,17 +94,25 @@ export default function TodayScreen() {
                 </PressableScale>
               ))}
             </View>
-            <PressableScale onPress={undoWater} style={styles.undo}>
-              <Text style={{ color: theme.muted, fontFamily: Fonts.semibold, fontSize: 13 }}>Undo last sip</Text>
+            <PressableScale
+              onPress={undoWater}
+              disabled={!canUndoWater}
+              accessibilityRole="button"
+              accessibilityLabel="Undo last sip"
+              accessibilityState={{ disabled: !canUndoWater }}
+              style={[styles.undo, { opacity: canUndoWater ? 1 : 0.35 }]}>
+              <Text style={{ color: theme.muted, fontFamily: Fonts.semibold, fontSize: 13 }}>
+                Undo last sip
+              </Text>
             </PressableScale>
           </View>
         ) : null}
 
         <View style={styles.sectionRow}>
-          <Text style={[styles.section, { color: theme.text }]}>Today's habits</Text>
-          {state.habits.length > 0 ? (
+          <Text style={[styles.section, { color: theme.text }]}>Today&apos;s habits</Text>
+          {progress.habitCount > 0 ? (
             <Text style={[styles.sectionCount, { color: theme.muted }]}>
-              {state.habits.filter((h) => isHabitDone(h.id)).length}/{state.habits.length}
+              {progress.habitsDone}/{progress.habitCount}
             </Text>
           ) : null}
         </View>
@@ -102,7 +124,7 @@ export default function TodayScreen() {
               Add your first habit and start building a streak today.
             </Text>
             <Link href="/(tabs)/habits" asChild>
-              <PressableScale>
+              <PressableScale accessibilityRole="button" accessibilityLabel="Add a habit">
                 <LinearGradient colors={Gradients.brand} style={styles.emptyCta}>
                   <Text style={styles.emptyCtaText}>Add a habit</Text>
                 </LinearGradient>
@@ -129,7 +151,8 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  loading: { fontSize: 14, fontFamily: Fonts.semibold },
   content: { padding: 20, paddingBottom: 20 },
   hello: { fontSize: 30, fontFamily: Fonts.extrabold },
   sub: { marginTop: 4, marginBottom: 20, fontSize: 15, fontFamily: Fonts.medium },
@@ -144,6 +167,13 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 2,
   },
+  badge: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginBottom: 14,
+  },
+  badgeText: { fontSize: 11, fontFamily: Fonts.bold, letterSpacing: 0.2 },
   quickRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -158,7 +188,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   pillText: { color: '#fff', fontFamily: Fonts.bold, fontSize: 14 },
-  undo: { marginTop: 14, backgroundColor: 'transparent' },
+  undo: { marginTop: 14, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: 'transparent' },
   sectionRow: {
     marginTop: 28,
     marginBottom: 12,
@@ -177,7 +207,13 @@ const styles = StyleSheet.create({
   },
   emptyEmoji: { fontSize: 36, marginBottom: 8 },
   emptyTitle: { fontSize: 17, fontFamily: Fonts.extrabold, marginBottom: 6 },
-  emptyBody: { fontSize: 14, fontFamily: Fonts.medium, textAlign: 'center', lineHeight: 20, marginBottom: 18 },
+  emptyBody: {
+    fontSize: 14,
+    fontFamily: Fonts.medium,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 18,
+  },
   emptyCta: { paddingHorizontal: 22, paddingVertical: 13, borderRadius: 16 },
   emptyCtaText: { color: '#fff', fontFamily: Fonts.extrabold, fontSize: 14 },
 });

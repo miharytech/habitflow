@@ -7,10 +7,12 @@ import Colors from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { TAB_BAR_HEIGHT, useTabBarSpace } from '@/components/useTabBarSpace';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme];
+  const { bottom } = useTabBarSpace();
 
   return (
     <Tabs
@@ -18,10 +20,13 @@ export default function TabLayout() {
         tabBarActiveTintColor: theme.tint,
         tabBarInactiveTintColor: theme.tabIconDefault,
         tabBarShowLabel: true,
-        tabBarLabelStyle: { fontFamily: Fonts.semibold, fontSize: 11 },
+        // Without an explicit lineHeight the label box collapses to ~8px inside a
+        // fixed-height tab bar and clips the glyphs.
+        tabBarLabelStyle: { fontFamily: Fonts.semibold, fontSize: 11, lineHeight: 14 },
+        tabBarIconStyle: { marginTop: 2 },
         tabBarStyle: [
           styles.tabBar,
-          { borderColor: theme.border, shadowColor: theme.shadow },
+          { borderColor: theme.border, shadowColor: theme.shadow, bottom },
         ],
         tabBarBackground: () => (
           <BlurView
@@ -97,12 +102,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 16,
     right: 16,
-    bottom: 20,
-    height: 68,
+    height: TAB_BAR_HEIGHT,
     borderRadius: 28,
     borderWidth: 1,
     borderTopWidth: 1,
-    paddingTop: 10,
+    paddingTop: 8,
     paddingBottom: 10,
     elevation: 0,
     shadowOffset: { width: 0, height: 12 },

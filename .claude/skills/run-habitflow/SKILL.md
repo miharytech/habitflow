@@ -87,6 +87,7 @@ the RN animations/navigation to settle before the next one):
 | `nav <url>` | navigate to a URL (defaults to the dev server root) |
 | `tab <Today\|Habits\|Progress\|Settings>` | click a bottom-tab by accessible name, waits, dismisses any error overlay |
 | `tap <exact text>` | click the first element with that exact visible text (e.g. `tap +250`, `tap Stretch 5 min`) |
+| `role <role> <name>` | click by accessible role + name — the only way to reach controls with no visible text, e.g. `role switch Water counts as a daily task` |
 | `dismiss` | manually dismiss the LogBox error overlay if one is showing |
 | `wait <ms>` | pause |
 | `screenshot <name>` | save `screenshots/<name>.png` |
@@ -125,10 +126,11 @@ No test suite is configured (`package.json` has no `test` script).
   `Pressable` listens for — tab navigation silently does nothing (URL
   doesn't change) even though the click "succeeds." Use the CSS fix,
   not `force:true`.
-- **Full-screen LogBox error overlay blocks the app.** `components/WaterRing.tsx`
-  (used on both the Today and Habits screens) passes an invalid
-  `transform-origin` prop to an SVG `<Circle>` on every mount, which
-  Expo's web LogBox promotes to a full-screen `Console Error` overlay
+- **Full-screen LogBox error overlay blocks the app.** No longer fires on
+  a clean tree — `WaterRing` used to pass an invalid `transform-origin`
+  prop to an SVG `<Circle>` on every mount and that has been fixed — but
+  any `console.error`-level warning still gets promoted by Expo's web
+  LogBox to a full-screen `Console Error` overlay
   rendered inside an **open shadow root** at `#error-overlay`
   (`document.getElementById('error-overlay').shadowRoot`). It reappears
   after almost every navigation and blocks all further clicks until
