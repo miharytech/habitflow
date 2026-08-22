@@ -13,9 +13,14 @@ import { APP_VERSION, PRIVACY_POLICY_URL, SUPPORT_EMAIL } from '@/constants/Link
 import { useApp } from '@/context/AppProvider';
 import { privacyOptionsRequired, showPrivacyOptions, subscribeToAdsReady } from '@/lib/ads';
 import { formatMl } from '@/lib/dates';
-import type { DailyGoalCount } from '@/lib/types';
+import type { DailyGoalCount, ThemePreference } from '@/lib/types';
 
 const GOALS = [1500, 2000, 2500, 3000];
+const THEMES: { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: '⚙️ System' },
+  { value: 'light', label: '☀️ Light' },
+  { value: 'dark', label: '🌙 Dark' },
+];
 const DAILY_GOALS: { value: DailyGoalCount; label: string }[] = [
   { value: 1, label: 'Casual · 1' },
   { value: 2, label: 'Regular · 2' },
@@ -34,6 +39,7 @@ export default function SettingsScreen() {
     setRemindersEnabled,
     setDailyGoalCount,
     setIncludeWaterInDailyGoal,
+    setThemePreference,
     resetAllData,
   } = useApp();
 
@@ -74,6 +80,41 @@ export default function SettingsScreen() {
       contentContainerStyle={[styles.content, { paddingBottom: clearance + 20 }]}
       showsVerticalScrollIndicator={false}>
       <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
+
+      <Text style={[styles.label, { color: theme.text }]}>Appearance</Text>
+      <Text style={[styles.help, { color: theme.muted }]}>
+        {state.themePreference === 'system'
+          ? `Following your phone — currently ${scheme}. Pick Light or Dark to keep HabitFlow on one theme whatever your phone does.`
+          : `HabitFlow stays ${state.themePreference} even when your phone switches.`}
+      </Text>
+      <View style={styles.row}>
+        {THEMES.map((item) => {
+          const active = state.themePreference === item.value;
+          return (
+            <PressableScale
+              key={item.value}
+              onPress={() => setThemePreference(item.value)}
+              scaleTo={0.94}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`Appearance: ${item.value}`}>
+              {active ? (
+                <LinearGradient colors={Gradients.brand} style={styles.chip}>
+                  <Text style={styles.chipTextActive}>{item.label}</Text>
+                </LinearGradient>
+              ) : (
+                <View
+                  style={[
+                    styles.chip,
+                    { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border },
+                  ]}>
+                  <Text style={[styles.chipText, { color: theme.text }]}>{item.label}</Text>
+                </View>
+              )}
+            </PressableScale>
+          );
+        })}
+      </View>
 
       <Text style={[styles.label, { color: theme.text }]}>Daily goal</Text>
       <Text style={[styles.help, { color: theme.muted }]}>{goalHelp}</Text>

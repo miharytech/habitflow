@@ -63,7 +63,7 @@ export default function TodayScreen() {
               { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow },
             ]}>
             {progress.waterCounts ? (
-              <View style={[styles.badge, { backgroundColor: theme.backgroundAlt }]}>
+              <View style={[styles.badge, { backgroundColor: theme.track }]}>
                 <Text style={[styles.badgeText, { color: theme.muted }]}>
                   Counts as one daily task
                 </Text>
@@ -72,7 +72,7 @@ export default function TodayScreen() {
             <WaterRing
               ml={waterTodayMl}
               goalMl={state.waterGoalMl}
-              trackColor={theme.backgroundAlt}
+              trackColor={theme.track}
               textColor={theme.text}
               mutedColor={theme.muted}
             />

@@ -20,6 +20,8 @@ export default {
     muted: '#726E8A',
     background: '#F7F6FC',
     backgroundAlt: '#EFEEFC',
+    /** Recessed surfaces that sit *on* a card: progress tracks, empty dots. */
+    track: '#EFEEFC',
     card: '#FFFFFF',
     cardAlt: '#F4F2FE',
     border: '#E9E6F7',
@@ -41,6 +43,9 @@ export default {
     muted: '#A29DC2',
     background: '#0A0916',
     backgroundAlt: '#100E20',
+    // Lighter than `card` on purpose — on dark, a recessed surface has to sit
+    // above the card it is drawn on or it reads as a hole punched in it.
+    track: '#262146',
     card: '#181530',
     cardAlt: '#1F1B3B',
     border: '#2A2549',

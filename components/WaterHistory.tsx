@@ -77,7 +77,7 @@ export default function WaterHistory({ state, today }: Props) {
                 day.met ? ', goal met' : ''
               }`}
               style={styles.column}>
-              <View style={[styles.track, { backgroundColor: theme.backgroundAlt }]}>
+              <View style={[styles.track, { backgroundColor: theme.track }]}>
                 {height > 0 ? (
                   day.met ? (
                     <LinearGradient
@@ -87,7 +87,14 @@ export default function WaterHistory({ state, today }: Props) {
                       style={[styles.bar, { height }]}
                     />
                   ) : (
-                    <View style={[styles.bar, { height, backgroundColor: theme.water, opacity: 0.32 }]} />
+                    <View
+                      style={[
+                        styles.bar,
+                        // A pale wash reads as "partial" on light; on dark it
+                        // needs more of the colour to stay above the track.
+                        { height, backgroundColor: theme.water, opacity: scheme === 'dark' ? 0.55 : 0.32 },
+                      ]}
+                    />
                   )
                 ) : null}
               </View>

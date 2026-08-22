@@ -85,7 +85,7 @@ export default function ProgressScreen() {
                       style={[
                         styles.dot,
                         {
-                          backgroundColor: frozen ? theme.gem : theme.backgroundAlt,
+                          backgroundColor: frozen ? theme.gem : theme.track,
                           borderWidth: frozen ? 0 : 1,
                           borderColor: theme.border,
                         },
@@ -105,7 +105,7 @@ export default function ProgressScreen() {
           <Text style={[styles.cardTitle, { color: theme.text }]}>
             Level {level} · {into}/{XP_PER_LEVEL} XP
           </Text>
-          <View style={[styles.track, { backgroundColor: theme.backgroundAlt }]}>
+          <View style={[styles.track, { backgroundColor: theme.track }]}>
             <LinearGradient
               colors={Gradients.gem}
               start={{ x: 0, y: 0 }}
@@ -150,7 +150,7 @@ export default function ProgressScreen() {
                     <Text style={styles.badgeEmoji}>{item.emoji}</Text>
                   </LinearGradient>
                 ) : (
-                  <View style={[styles.badgeIcon, { backgroundColor: theme.backgroundAlt }]}>
+                  <View style={[styles.badgeIcon, { backgroundColor: theme.track }]}>
                     <Text style={styles.badgeEmoji}>🔒</Text>
                   </View>
                 )}

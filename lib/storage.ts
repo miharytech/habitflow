@@ -7,6 +7,7 @@ import {
   DEFAULT_DAILY_GOAL_COUNT,
   DEFAULT_GLASS_ML,
   DEFAULT_REMINDER_HOURS,
+  DEFAULT_THEME_PREFERENCE,
   DEFAULT_WATER_GOAL_ML,
   MAX_EXTRA_HABIT_SLOTS,
   MAX_HABIT_NAME_LENGTH,
@@ -17,6 +18,7 @@ import {
   type Habit,
   type HabitCompletion,
   type PersistedState,
+  type ThemePreference,
   type WaterLog,
 } from '@/lib/types';
 
@@ -46,6 +48,7 @@ export const emptyState = (): PersistedState => ({
   gems: 0,
   streakFreezes: 0,
   dailyGoalCount: DEFAULT_DAILY_GOAL_COUNT,
+  themePreference: DEFAULT_THEME_PREFERENCE,
   includeWaterInDailyGoal: false,
   appStreak: 0,
   longestStreak: 0,
@@ -161,6 +164,7 @@ function parseState(value: unknown): PersistedState {
     gems: Math.max(0, Math.floor(asFiniteNumber(value.gems, 0))),
     streakFreezes: clampFreezes(asFiniteNumber(value.streakFreezes, 0)),
     dailyGoalCount: parseDailyGoalCount(value.dailyGoalCount),
+    themePreference: parseThemePreference(value.themePreference),
     includeWaterInDailyGoal: waterTrackingEnabled && value.includeWaterInDailyGoal === true,
     appStreak: Math.max(0, Math.floor(asFiniteNumber(value.appStreak, 0))),
     longestStreak: Math.max(
@@ -190,6 +194,11 @@ function parseWaterDaily(value: unknown): Record<string, number> {
     kept += 1;
   }
   return totals;
+}
+
+function parseThemePreference(value: unknown): ThemePreference {
+  if (value === 'light' || value === 'dark' || value === 'system') return value;
+  return DEFAULT_THEME_PREFERENCE;
 }
 
 function parseDay(value: unknown) {

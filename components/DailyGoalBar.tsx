@@ -54,7 +54,7 @@ export default function DailyGoalBar({ progress }: Props) {
         )}
       </View>
 
-      <View style={[styles.track, { backgroundColor: theme.backgroundAlt }]}>
+      <View style={[styles.track, { backgroundColor: theme.track }]}>
         {ratio > 0 ? (
           <LinearGradient
             colors={met ? Gradients.fire : Gradients.brand}
@@ -99,7 +99,7 @@ function Chip({
       style={[
         styles.chip,
         {
-          backgroundColor: done ? theme.successSoft : theme.backgroundAlt,
+          backgroundColor: done ? theme.successSoft : theme.track,
           borderColor: done ? 'transparent' : theme.border,
         },
       ]}>

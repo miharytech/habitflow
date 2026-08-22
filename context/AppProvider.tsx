@@ -17,6 +17,7 @@ import {
   waterMlOnDay,
   type Celebration,
 } from '@/lib/gamification';
+import { ThemePreferenceProvider } from '@/context/ThemeContext';
 import { syncReminderPlan, syncWaterReminders } from '@/lib/notifications';
 import { emptyState, loadState, scheduleSave } from '@/lib/storage';
 import {
@@ -32,6 +33,7 @@ import {
   type DailyGoalCount,
   type Habit,
   type PersistedState,
+  type ThemePreference,
 } from '@/lib/types';
 
 type AppContextValue = {
@@ -57,6 +59,7 @@ type AppContextValue = {
   setWaterTrackingEnabled: (enabled: boolean) => Promise<void>;
   setDailyGoalCount: (count: DailyGoalCount) => void;
   setIncludeWaterInDailyGoal: (enabled: boolean) => void;
+  setThemePreference: (preference: ThemePreference) => void;
   resetAllData: () => Promise<void>;
   dismissCelebration: () => void;
 };
@@ -425,6 +428,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           { celebrate: true }
         );
       },
+      setThemePreference: (preference) => {
+        update((prev) => ({ ...prev, themePreference: preference }));
+      },
       resetAllData: async () => {
         await syncWaterReminders(false, stateRef.current?.reminderHours ?? DEFAULT_REMINDER_HOURS);
         setCelebration(null);
@@ -446,7 +452,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     waterTodayMl,
   ]);
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      <ThemePreferenceProvider preference={value.state.themePreference}>
+        {children}
+      </ThemePreferenceProvider>
+    </AppContext.Provider>
+  );
 }
 
 export function useApp() {

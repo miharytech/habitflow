@@ -99,6 +99,16 @@ runs in Expo Go and on web, where the native module is absent
 `constants/Colors.ts` (light/dark palettes + `Gradients`) and
 `constants/Fonts.ts` (Plus Jakarta Sans) are the only sources for color and
 type; `components/Themed.tsx` provides the themed `Text`/`View` primitives.
+`theme.track` — not `backgroundAlt` — is the token for a recessed surface drawn
+*on* a card (progress tracks, empty dots, locked badges): on dark it is lighter
+than `card`, so it reads as raised rather than as a hole.
+
+`useColorScheme()` resolves the saved `themePreference` (`system` | `light` |
+`dark`, set from Settings › Appearance) over the device scheme, so an explicit
+choice overrides the phone in both directions. The preference is served by
+`context/ThemeContext.tsx`, deliberately a separate context from `AppProvider`
+so the hook never depends on the whole app state. The web variant of the hook
+renders light during SSR and swaps after mount to avoid a hydration mismatch.
 The tab bar floats (absolutely positioned), so it reserves no layout space —
 screens must pad their bottom with `useTabBarSpace().clearance`.
 
