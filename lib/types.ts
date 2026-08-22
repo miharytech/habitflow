@@ -27,6 +27,12 @@ export type PersistedState = {
   habits: Habit[];
   waterLogs: WaterLog[];
   completions: HabitCompletion[];
+  /**
+   * All-time water history: local day key -> millilitres. Individual sips are
+   * only kept for `WATER_LOG_RETENTION_DAYS`, so this rolled-up total is what
+   * survives for long-range charts. Days with no water carry no entry.
+   */
+  waterDaily: Record<string, number>;
   lastGoalAdDate?: string;
   waterTrackingEnabled: boolean;
   xpTotal: number;
@@ -54,6 +60,8 @@ export const MAX_WATER_GOAL_ML = 10000;
 export const DEFAULT_REMINDER_HOURS = [8, 11, 14, 17, 20];
 export const QUICK_ADD_ML = [150, 250, 350, 500];
 export const WATER_LOG_RETENTION_DAYS = 90;
+/** ~55 years of daily totals; a guard against a corrupt blob, not a real limit. */
+export const MAX_WATER_DAILY_ENTRIES = 20000;
 export const COMPLETION_RETENTION_DAYS = 400;
 export const MAX_HABIT_NAME_LENGTH = 80;
 export const DEFAULT_DAILY_GOAL_COUNT: DailyGoalCount = 2;

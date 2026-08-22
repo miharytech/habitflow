@@ -70,10 +70,49 @@ export function hasTrackableContent(state: PersistedState) {
   return state.habits.length > 0 || state.waterTrackingEnabled;
 }
 
+/**
+ * Sips are only kept for 90 days. While a day still has logs they are the
+ * truth (an undo has to be able to take water back off the day); once they
+ * are pruned the rolled-up `waterDaily` total is the only record left, and it
+ * is kept forever.
+ */
 export function waterMlOnDay(state: PersistedState, date: string) {
-  return state.waterLogs
-    .filter((log) => localDayOf(log.at) === date)
-    .reduce((sum, log) => sum + log.ml, 0);
+  let sum = 0;
+  let logged = false;
+  for (const log of state.waterLogs) {
+    if (localDayOf(log.at) !== date) continue;
+    sum += log.ml;
+    logged = true;
+  }
+  return logged ? sum : (state.waterDaily[date] ?? 0);
+}
+
+/** Re-derives one day's rolled-up total from its logs. Every water write goes through this. */
+export function syncWaterDay(state: PersistedState, date: string): PersistedState {
+  let ml = 0;
+  for (const log of state.waterLogs) {
+    if (localDayOf(log.at) === date) ml += log.ml;
+  }
+  const waterDaily = { ...state.waterDaily };
+  if (ml > 0) waterDaily[date] = ml;
+  else delete waterDaily[date];
+  return { ...state, waterDaily };
+}
+
+/**
+ * Every day that has water, newest last. Logs win over the rollup for days
+ * they still cover, so an undo shows up here immediately.
+ */
+export function waterTotalsByDay(state: PersistedState): Map<string, number> {
+  const totals = new Map<string, number>(Object.entries(state.waterDaily));
+  const fromLogs = new Map<string, number>();
+  for (const log of state.waterLogs) {
+    const day = localDayOf(log.at);
+    if (!day) continue;
+    fromLogs.set(day, (fromLogs.get(day) ?? 0) + log.ml);
+  }
+  for (const [day, ml] of fromLogs) totals.set(day, ml);
+  return new Map([...totals].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 }
 
 export function habitsDoneOn(state: PersistedState, date: string) {

@@ -43,6 +43,13 @@ storage or the gamification helpers directly — they call `useApp()`,
   AsyncStorage key (`habitflow.state.v1`) via `lib/storage.ts`, which
   coalesces writes (`scheduleSave`), re-validates every field on load
   (`parseState`), and prunes logs past their retention window.
+- Water history is two-tier. Individual sips (`waterLogs`) are kept for 90 days
+  so they can be undone; `pruneState` folds them into `waterDaily`
+  (`YYYY-MM-DD` -> ml), an all-time per-day rollup that is **never** pruned —
+  that is what the Water history screen charts over years. `waterMlOnDay`
+  prefers the logs while a day still has them and falls back to the rollup, and
+  every water write re-derives the day through `syncWaterDay`, so an undo takes
+  the day back off both tiers.
 - Every write goes through `commit`, which updates a `stateRef` *and* React
   state. Deriving next state inside a `setState` updater is deliberately avoided:
   callers read results back synchronously (celebration payloads, unlock outcomes)

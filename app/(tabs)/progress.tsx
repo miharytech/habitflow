@@ -5,6 +5,7 @@ import AdBanner from '@/components/AdBanner';
 import PressableScale from '@/components/PressableScale';
 import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
+import WaterHistory from '@/components/WaterHistory';
 import Colors, { Gradients } from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
 import { useApp } from '@/context/AppProvider';
@@ -97,6 +98,8 @@ export default function ProgressScreen() {
             })}
           </View>
         </View>
+
+        <WaterHistory state={state} today={today} />
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow }]}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>

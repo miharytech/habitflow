@@ -10,6 +10,7 @@ import {
   DEFAULT_WATER_GOAL_ML,
   MAX_EXTRA_HABIT_SLOTS,
   MAX_HABIT_NAME_LENGTH,
+  MAX_WATER_DAILY_ENTRIES,
   MAX_WATER_GOAL_ML,
   MIN_WATER_GOAL_ML,
   WATER_LOG_RETENTION_DAYS,
@@ -39,6 +40,7 @@ export const emptyState = (): PersistedState => ({
   ],
   waterLogs: [],
   completions: [],
+  waterDaily: {},
   waterTrackingEnabled: true,
   xpTotal: 0,
   gems: 0,
@@ -92,12 +94,32 @@ export function pruneState(state: PersistedState, today = todayKey()): Persisted
   return {
     ...state,
     extraHabitSlots: clampSlots(state.extraHabitSlots),
+    waterDaily: rollUpWater(state, waterCutoff),
     waterLogs: state.waterLogs.filter((log) => {
       const day = localDayOf(log.at);
       return Boolean(day) && day >= waterCutoff;
     }),
     completions: state.completions.filter((item) => item.date >= completionCutoff),
   };
+}
+
+/**
+ * Folds the sip logs into the all-time day totals right before the old ones
+ * are dropped, so history outlives the 90-day log window. Inside that window
+ * the logs are authoritative — a day whose sips were all undone loses its
+ * entry — while older entries are kept untouched, forever.
+ */
+function rollUpWater(state: PersistedState, waterCutoff: string): Record<string, number> {
+  const totals: Record<string, number> = {};
+  for (const [day, ml] of Object.entries(state.waterDaily ?? {})) {
+    if (day < waterCutoff) totals[day] = ml;
+  }
+  for (const log of state.waterLogs) {
+    const day = localDayOf(log.at);
+    if (!day) continue;
+    totals[day] = (totals[day] ?? 0) + log.ml;
+  }
+  return totals;
 }
 
 function parseState(value: unknown): PersistedState {
@@ -132,6 +154,7 @@ function parseState(value: unknown): PersistedState {
     habits,
     waterLogs,
     completions,
+    waterDaily: parseWaterDaily(value.waterDaily),
     lastGoalAdDate,
     waterTrackingEnabled,
     xpTotal: Math.max(0, Math.floor(asFiniteNumber(value.xpTotal, 0))),
@@ -151,6 +174,22 @@ function parseState(value: unknown): PersistedState {
     waterXpAwardedDate: parseDay(value.waterXpAwardedDate),
     unlockedAchievementIds: parseAchievementIds(value.unlockedAchievementIds),
   };
+}
+
+/** Day totals are the only all-time record, so they are validated key by key. */
+function parseWaterDaily(value: unknown): Record<string, number> {
+  if (!isRecord(value)) return {};
+  const totals: Record<string, number> = {};
+  let kept = 0;
+  for (const day of Object.keys(value).sort().reverse()) {
+    if (kept >= MAX_WATER_DAILY_ENTRIES) break;
+    if (!DAY_KEY.test(day)) continue;
+    const ml = asFiniteNumber(value[day], 0);
+    if (ml <= 0) continue;
+    totals[day] = Math.min(Math.round(ml), MAX_WATER_GOAL_ML * 20);
+    kept += 1;
+  }
+  return totals;
 }
 
 function parseDay(value: unknown) {

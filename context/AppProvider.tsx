@@ -13,6 +13,8 @@ import {
   hasTrackableContent,
   isDailyGoalMet,
   settleStreak,
+  syncWaterDay,
+  waterMlOnDay,
   type Celebration,
 } from '@/lib/gamification';
 import { syncReminderPlan, syncWaterReminders } from '@/lib/notifications';
@@ -202,9 +204,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const waterTodayMl = useMemo(() => {
     if (!state) return 0;
-    return state.waterLogs
-      .filter((log) => isOnLocalDay(log.at, today))
-      .reduce((sum, log) => sum + log.ml, 0);
+    return waterMlOnDay(state, today);
   }, [state, today]);
 
   const habitLimit = (state?.extraHabitSlots ?? 0) + FREE_HABIT_LIMIT;
@@ -242,11 +242,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const reachedGoal = todayMl < prev.waterGoalMl && nextTotal >= prev.waterGoalMl;
             const alreadyShown = prev.lastGoalAdDate === today;
             if (reachedGoal && !alreadyShown) shouldShowAd = true;
-            return {
-              ...prev,
-              waterLogs: [...prev.waterLogs, { id: createId(), ml, at: new Date().toISOString() }],
-              lastGoalAdDate: reachedGoal && !alreadyShown ? today : prev.lastGoalAdDate,
-            };
+            return syncWaterDay(
+              {
+                ...prev,
+                waterLogs: [
+                  ...prev.waterLogs,
+                  { id: createId(), ml, at: new Date().toISOString() },
+                ],
+                lastGoalAdDate: reachedGoal && !alreadyShown ? today : prev.lastGoalAdDate,
+              },
+              today
+            );
           },
           { celebrate: true }
         );
@@ -261,7 +267,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const todayLogs = prev.waterLogs.filter((log) => isOnLocalDay(log.at, today));
           const last = todayLogs[todayLogs.length - 1];
           if (!last) return prev;
-          return { ...prev, waterLogs: prev.waterLogs.filter((log) => log.id !== last.id) };
+          return syncWaterDay(
+            { ...prev, waterLogs: prev.waterLogs.filter((log) => log.id !== last.id) },
+            today
+          );
         });
       },
       toggleHabit: (id) => {

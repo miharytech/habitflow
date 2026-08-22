@@ -101,6 +101,7 @@ function RootLayoutNav() {
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Habit' }} />
+        <Stack.Screen name="water-history" options={{ title: 'Water history' }} />
       </Stack>
       <CelebrationModal celebration={celebration} onDismiss={dismissCelebration} />
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
