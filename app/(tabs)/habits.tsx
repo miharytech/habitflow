@@ -10,9 +10,9 @@ import { useColorScheme } from '@/components/useColorScheme';
 import Colors, { Gradients } from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
 import { useApp } from '@/context/AppProvider';
+import { useT } from '@/context/I18nContext';
 import { FREE_HABIT_LIMIT, REWARD_EXTRA_SLOTS } from '@/lib/types';
 import { isAdMobAvailable } from '@/lib/ads';
-import { formatMl } from '@/lib/dates';
 
 export default function HabitsScreen() {
   const scheme = useColorScheme();
@@ -30,27 +30,28 @@ export default function HabitsScreen() {
     unlockMoreHabits,
     setWaterTrackingEnabled,
   } = useApp();
+  const t = useT();
 
   if (!ready) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Text>Loading…</Text>
+        <Text>{t.common.loading}</Text>
       </View>
     );
   }
 
   const confirmDelete = (id: string, name: string) => {
-    Alert.alert('Delete habit?', name, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteHabit(id) },
+    Alert.alert(t.habits.deleteTitle, name, [
+      { text: t.common.cancel, style: 'cancel' },
+      { text: t.common.delete, style: 'destructive', onPress: () => deleteHabit(id) },
     ]);
   };
 
   const confirmRemoveWater = () => {
-    Alert.alert('Remove water tracking?', 'You can add it back later. Your sip history stays on this phone.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t.habits.removeWaterTitle, t.habits.removeWaterBody, [
+      { text: t.common.cancel, style: 'cancel' },
       {
-        text: 'Remove',
+        text: t.common.remove,
         style: 'destructive',
         onPress: () => {
           void setWaterTrackingEnabled(false);
@@ -63,19 +64,17 @@ export default function HabitsScreen() {
     const ok = await unlockMoreHabits();
     if (ok) return;
     Alert.alert(
-      'Reward unavailable',
-      isAdMobAvailable()
-        ? 'The ad did not finish loading. Please check your connection and try again in a moment.'
-        : `No ad is available right now. Your ${FREE_HABIT_LIMIT} free habits stay available.`
+      t.rewards.unavailableTitle,
+      isAdMobAvailable() ? t.rewards.adFailedBody : t.rewards.noAdHabitsBody(FREE_HABIT_LIMIT)
     );
   };
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.background }]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.title, { color: theme.text }]}>Your habits</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t.habits.title}</Text>
         <Text style={[styles.meta, { color: theme.muted }]}>
-          {state.habits.length} / {habitLimit} slots · tap Edit to rename · long-press to delete
+          {t.habits.meta(state.habits.length, habitLimit)}
         </Text>
 
         {state.waterTrackingEnabled ? (
@@ -83,16 +82,16 @@ export default function HabitsScreen() {
             onLongPress={confirmRemoveWater}
             scaleTo={0.98}
             accessibilityRole="button"
-            accessibilityLabel="Water tracking"
-            accessibilityHint="Long press to remove water tracking"
+            accessibilityLabel={t.habits.waterTracking}
+            accessibilityHint={t.habits.waterHint}
             style={[styles.waterRow, { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow }]}>
             <LinearGradient colors={Gradients.water} style={styles.waterIcon}>
               <Text style={styles.waterEmoji}>💧</Text>
             </LinearGradient>
             <View style={styles.waterBody}>
-              <Text style={[styles.name, { color: theme.text }]}>Water tracking</Text>
+              <Text style={[styles.name, { color: theme.text }]}>{t.habits.waterTracking}</Text>
               <Text style={[styles.waterMeta, { color: theme.muted }]}>
-                {formatMl(waterTodayMl)} / {formatMl(state.waterGoalMl)} · long-press to remove
+                {t.habits.waterMeta(t.formatMl(waterTodayMl), t.formatMl(state.waterGoalMl))}
               </Text>
             </View>
           </PressableScale>
@@ -100,10 +99,10 @@ export default function HabitsScreen() {
           <PressableScale
             onPress={() => void setWaterTrackingEnabled(true)}
             accessibilityRole="button"
-            accessibilityLabel="Add water tracking"
+            accessibilityLabel={t.habits.addWaterTracking}
             style={{ marginBottom: 10 }}>
             <LinearGradient colors={Gradients.water} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
-              <Text style={styles.ctaText}>💧 Add water tracking</Text>
+              <Text style={styles.ctaText}>{t.habits.addWaterTracking}</Text>
             </LinearGradient>
           </PressableScale>
         )}
@@ -122,9 +121,9 @@ export default function HabitsScreen() {
 
         {canAddHabit ? (
           <Link href="/modal" asChild>
-            <PressableScale accessibilityRole="button" accessibilityLabel="Add habit">
+            <PressableScale accessibilityRole="button" accessibilityLabel={t.habits.addHabitA11y}>
               <LinearGradient colors={Gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
-                <Text style={styles.ctaText}>+ Add habit</Text>
+                <Text style={styles.ctaText}>{t.habits.addHabit}</Text>
               </LinearGradient>
             </PressableScale>
           </Link>
@@ -132,16 +131,15 @@ export default function HabitsScreen() {
           <PressableScale
             onPress={onUnlock}
             accessibilityRole="button"
-            accessibilityLabel={`Watch an ad to unlock ${REWARD_EXTRA_SLOTS} more habit slots`}>
+            accessibilityLabel={t.habits.unlockA11y(REWARD_EXTRA_SLOTS)}>
             <LinearGradient colors={Gradients.gem} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
-              <Text style={styles.ctaText}>🎬 Watch an ad to unlock {REWARD_EXTRA_SLOTS} more habits</Text>
+              <Text style={styles.ctaText}>{t.habits.unlockCta(REWARD_EXTRA_SLOTS)}</Text>
             </LinearGradient>
           </PressableScale>
         )}
 
         <Text style={[styles.hint, { color: theme.muted }]}>
-          {FREE_HABIT_LIMIT} habits are free. Watching a short ad unlocks {REWARD_EXTRA_SLOTS} more
-          slots and keeps HabitFlow free for everyone. Water tracking never uses a slot.
+          {t.habits.hint(FREE_HABIT_LIMIT, REWARD_EXTRA_SLOTS)}
         </Text>
       </ScrollView>
       <AdBanner />

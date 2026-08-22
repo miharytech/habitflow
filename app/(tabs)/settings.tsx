@@ -11,22 +11,12 @@ import Colors, { Gradients } from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
 import { APP_VERSION, PRIVACY_POLICY_URL, SUPPORT_EMAIL } from '@/constants/Links';
 import { useApp } from '@/context/AppProvider';
+import { useI18n } from '@/context/I18nContext';
 import { privacyOptionsRequired, showPrivacyOptions, subscribeToAdsReady } from '@/lib/ads';
-import { formatMl } from '@/lib/dates';
+import { LANGUAGE_CODES, LANGUAGE_NAMES, resolveLanguage, type LanguagePreference } from '@/lib/i18n';
 import type { DailyGoalCount, ThemePreference } from '@/lib/types';
 
 const GOALS = [1500, 2000, 2500, 3000];
-const THEMES: { value: ThemePreference; label: string }[] = [
-  { value: 'system', label: '⚙️ System' },
-  { value: 'light', label: '☀️ Light' },
-  { value: 'dark', label: '🌙 Dark' },
-];
-const DAILY_GOALS: { value: DailyGoalCount; label: string }[] = [
-  { value: 1, label: 'Casual · 1' },
-  { value: 2, label: 'Regular · 2' },
-  { value: 3, label: 'Serious · 3' },
-  { value: 'all', label: 'Everything' },
-];
 
 export default function SettingsScreen() {
   const scheme = useColorScheme();
@@ -40,8 +30,28 @@ export default function SettingsScreen() {
     setDailyGoalCount,
     setIncludeWaterInDailyGoal,
     setThemePreference,
+    setLanguage,
     resetAllData,
   } = useApp();
+  const { t, language } = useI18n();
+
+  const themes: { value: ThemePreference; label: string }[] = [
+    { value: 'system', label: t.settings.themeSystem },
+    { value: 'light', label: t.settings.themeLight },
+    { value: 'dark', label: t.settings.themeDark },
+  ];
+  const languages: { value: LanguagePreference; label: string }[] = [
+    { value: 'system', label: t.settings.languageSystemChip },
+    ...LANGUAGE_CODES.map((code) => ({ value: code as LanguagePreference, label: LANGUAGE_NAMES[code] })),
+  ];
+  const dailyGoals: { value: DailyGoalCount; label: string }[] = [
+    { value: 1, label: t.settings.goalCasual },
+    { value: 2, label: t.settings.goalRegular },
+    { value: 3, label: t.settings.goalSerious },
+    { value: 'all', label: t.settings.goalEverything },
+  ];
+
+  const schemeName = scheme === 'dark' ? t.settings.schemeDark : t.settings.schemeLight;
 
   const [adPrivacy, setAdPrivacy] = useState(false);
   useEffect(() => {
@@ -53,42 +63,38 @@ export default function SettingsScreen() {
   if (!ready) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Text>Loading…</Text>
+        <Text>{t.common.loading}</Text>
       </View>
     );
   }
 
   const confirmReset = () => {
-    Alert.alert(
-      'Erase all HabitFlow data?',
-      'Your habits, sip history, streak, XP and gems are stored only on this phone. They will be permanently deleted and HabitFlow will start over from scratch.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Erase', style: 'destructive', onPress: () => void resetAllData() },
-      ]
-    );
+    Alert.alert(t.settings.eraseTitle, t.settings.eraseBody, [
+      { text: t.common.cancel, style: 'cancel' },
+      { text: t.common.erase, style: 'destructive', onPress: () => void resetAllData() },
+    ]);
   };
 
   const goalHelp =
     state.waterTrackingEnabled && state.includeWaterInDailyGoal
-      ? 'Finish this many tasks to keep your flame. Your water goal counts as one of them.'
-      : 'Finish this many habits to keep your flame. If you have fewer habits, the goal shrinks to match.';
+      ? t.settings.dailyGoalHelpWater
+      : t.settings.dailyGoalHelp;
 
   return (
     <ScrollView
       style={[styles.screen, { backgroundColor: theme.background }]}
       contentContainerStyle={[styles.content, { paddingBottom: clearance + 20 }]}
       showsVerticalScrollIndicator={false}>
-      <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
+      <Text style={[styles.title, { color: theme.text }]}>{t.settings.title}</Text>
 
-      <Text style={[styles.label, { color: theme.text }]}>Appearance</Text>
+      <Text style={[styles.label, { color: theme.text }]}>{t.settings.appearance}</Text>
       <Text style={[styles.help, { color: theme.muted }]}>
         {state.themePreference === 'system'
-          ? `Following your phone — currently ${scheme}. Pick Light or Dark to keep HabitFlow on one theme whatever your phone does.`
-          : `HabitFlow stays ${state.themePreference} even when your phone switches.`}
+          ? t.settings.appearanceSystem(schemeName)
+          : t.settings.appearanceFixed(schemeName)}
       </Text>
       <View style={styles.row}>
-        {THEMES.map((item) => {
+        {themes.map((item) => {
           const active = state.themePreference === item.value;
           return (
             <PressableScale
@@ -97,7 +103,7 @@ export default function SettingsScreen() {
               scaleTo={0.94}
               accessibilityRole="radio"
               accessibilityState={{ selected: active }}
-              accessibilityLabel={`Appearance: ${item.value}`}>
+              accessibilityLabel={t.settings.themeA11y(item.label)}>
               {active ? (
                 <LinearGradient colors={Gradients.brand} style={styles.chip}>
                   <Text style={styles.chipTextActive}>{item.label}</Text>
@@ -116,10 +122,45 @@ export default function SettingsScreen() {
         })}
       </View>
 
-      <Text style={[styles.label, { color: theme.text }]}>Daily goal</Text>
+      <Text style={[styles.label, { color: theme.text }]}>{t.settings.language}</Text>
+      <Text style={[styles.help, { color: theme.muted }]}>
+        {state.language === 'system'
+          ? t.settings.languageSystem(LANGUAGE_NAMES[language])
+          : t.settings.languageFixed(LANGUAGE_NAMES[resolveLanguage(state.language)])}
+      </Text>
+      <View style={styles.row}>
+        {languages.map((item) => {
+          const active = state.language === item.value;
+          return (
+            <PressableScale
+              key={item.value}
+              onPress={() => setLanguage(item.value)}
+              scaleTo={0.94}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={t.settings.languageA11y(item.label)}>
+              {active ? (
+                <LinearGradient colors={Gradients.brandSoft} style={styles.chip}>
+                  <Text style={styles.chipTextActive}>{item.label}</Text>
+                </LinearGradient>
+              ) : (
+                <View
+                  style={[
+                    styles.chip,
+                    { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border },
+                  ]}>
+                  <Text style={[styles.chipText, { color: theme.text }]}>{item.label}</Text>
+                </View>
+              )}
+            </PressableScale>
+          );
+        })}
+      </View>
+
+      <Text style={[styles.label, { color: theme.text }]}>{t.settings.dailyGoal}</Text>
       <Text style={[styles.help, { color: theme.muted }]}>{goalHelp}</Text>
       <View style={styles.row}>
-        {DAILY_GOALS.map((item) => {
+        {dailyGoals.map((item) => {
           const active = state.dailyGoalCount === item.value;
           return (
             <PressableScale
@@ -128,7 +169,7 @@ export default function SettingsScreen() {
               scaleTo={0.94}
               accessibilityRole="radio"
               accessibilityState={{ selected: active }}
-              accessibilityLabel={`Daily goal: ${item.label}`}>
+              accessibilityLabel={t.settings.goalA11y(item.label)}>
               {active ? (
                 <LinearGradient colors={Gradients.fire} style={styles.chip}>
                   <Text style={styles.chipTextActive}>{item.label}</Text>
@@ -157,24 +198,23 @@ export default function SettingsScreen() {
             <View style={styles.switchRow}>
               <View style={{ flex: 1, backgroundColor: 'transparent' }}>
                 <Text style={[styles.cardTitle, { color: theme.text }]}>
-                  Water counts as a daily task
+                  {t.settings.waterIsATask}
                 </Text>
                 <Text style={[styles.switchHelp, { color: theme.muted }]}>
-                  On: hitting your water goal ticks off one of your daily tasks. Off: water only
-                  earns bonus XP.
+                  {t.settings.waterIsATaskHelp}
                 </Text>
               </View>
               <Switch
                 value={state.includeWaterInDailyGoal}
                 onValueChange={setIncludeWaterInDailyGoal}
-                accessibilityLabel="Water counts as a daily task"
+                accessibilityLabel={t.settings.waterIsATask}
                 trackColor={{ true: theme.tint, false: theme.border }}
                 thumbColor="#fff"
               />
             </View>
           </View>
 
-          <Text style={[styles.label, { color: theme.text }]}>Daily water goal</Text>
+          <Text style={[styles.label, { color: theme.text }]}>{t.settings.waterGoal}</Text>
           <View style={styles.row}>
             {GOALS.map((ml) => {
               const active = state.waterGoalMl === ml;
@@ -185,10 +225,10 @@ export default function SettingsScreen() {
                   scaleTo={0.94}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: active }}
-                  accessibilityLabel={`Water goal ${formatMl(ml)}`}>
+                  accessibilityLabel={t.settings.waterGoalA11y(t.formatMl(ml))}>
                   {active ? (
                     <LinearGradient colors={Gradients.water} style={styles.chip}>
-                      <Text style={styles.chipTextActive}>{formatMl(ml)}</Text>
+                      <Text style={styles.chipTextActive}>{t.formatMl(ml)}</Text>
                     </LinearGradient>
                   ) : (
                     <View
@@ -196,7 +236,7 @@ export default function SettingsScreen() {
                         styles.chip,
                         { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border },
                       ]}>
-                      <Text style={[styles.chipText, { color: theme.text }]}>{formatMl(ml)}</Text>
+                      <Text style={[styles.chipText, { color: theme.text }]}>{t.formatMl(ml)}</Text>
                     </View>
                   )}
                 </PressableScale>
@@ -211,7 +251,7 @@ export default function SettingsScreen() {
             ]}>
             <View style={styles.switchRow}>
               <View style={{ flex: 1, backgroundColor: 'transparent' }}>
-                <Text style={[styles.cardTitle, { color: theme.text }]}>Water reminders</Text>
+                <Text style={[styles.cardTitle, { color: theme.text }]}>{t.settings.reminders}</Text>
                 <Text style={[styles.switchHelp, { color: theme.muted }]}>
                   {state.reminderHours.map((hour) => `${hour}:00`).join(' · ')}
                 </Text>
@@ -219,7 +259,7 @@ export default function SettingsScreen() {
               <Switch
                 value={state.remindersEnabled}
                 onValueChange={setRemindersEnabled}
-                accessibilityLabel="Water reminders"
+                accessibilityLabel={t.settings.reminders}
                 trackColor={{ true: theme.tint, false: theme.border }}
                 thumbColor="#fff"
               />
@@ -227,25 +267,22 @@ export default function SettingsScreen() {
           </View>
         </>
       ) : (
-        <Text style={[styles.help, { color: theme.muted }]}>
-          Water tracking is off. Add it back from the Habits tab.
-        </Text>
+        <Text style={[styles.help, { color: theme.muted }]}>{t.settings.waterOff}</Text>
       )}
 
-      <Text style={[styles.label, { color: theme.text }]}>Privacy</Text>
+      <Text style={[styles.label, { color: theme.text }]}>{t.settings.privacy}</Text>
       <View
         style={[
           styles.card,
           { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow },
         ]}>
         <Text style={[styles.body, { color: theme.muted, marginTop: 0 }]}>
-          HabitFlow keeps your habits, sips and streak on this device only. Nothing is uploaded to a
-          server. Ads are served by Google AdMob.
+          {t.settings.privacyBody}
         </Text>
         {PRIVACY_POLICY_URL ? (
           <Row
             theme={theme}
-            label="Privacy policy"
+            label={t.settings.privacyPolicy}
             onPress={() => {
               void WebBrowser.openBrowserAsync(PRIVACY_POLICY_URL);
             }}
@@ -254,13 +291,13 @@ export default function SettingsScreen() {
         {adPrivacy ? (
           <Row
             theme={theme}
-            label="Ad privacy options"
+            label={t.settings.adPrivacy}
             onPress={() => {
               void showPrivacyOptions();
             }}
           />
         ) : null}
-        <Row theme={theme} label="Erase all my data" danger onPress={confirmReset} />
+        <Row theme={theme} label={t.settings.eraseData} danger onPress={confirmReset} />
       </View>
 
       <View
@@ -268,12 +305,12 @@ export default function SettingsScreen() {
           styles.card,
           { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow },
         ]}>
-        <Text style={[styles.cardTitle, { color: theme.text }]}>About</Text>
-        <Text style={[styles.body, { color: theme.muted }]}>HabitFlow {APP_VERSION}</Text>
+        <Text style={[styles.cardTitle, { color: theme.text }]}>{t.settings.about}</Text>
+        <Text style={[styles.body, { color: theme.muted }]}>{t.settings.version(APP_VERSION)}</Text>
         {SUPPORT_EMAIL ? (
           <Row
             theme={theme}
-            label="Contact support"
+            label={t.settings.contactSupport}
             onPress={() => {
               void Linking.openURL(`mailto:${SUPPORT_EMAIL}`);
             }}

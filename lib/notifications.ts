@@ -52,21 +52,42 @@ export async function requestReminderPermission() {
   return isAllowed(notifications, asked);
 }
 
-export function syncWaterReminders(enabled: boolean, hours: number[]): Promise<boolean> {
+/**
+ * Notification copy is passed in already translated: this module runs outside
+ * React, and the reminders have to be scheduled in the language the user reads
+ * the app in, not the device language.
+ */
+export type ReminderStrings = {
+  channel: string;
+  waterTitle: string;
+  waterBody: string;
+  streakTitle: string;
+  streakBody: string;
+};
+
+export type ReminderPlan = {
+  waterEnabled: boolean;
+  waterHours: number[];
+  streakAtRisk: boolean;
+  streakCount: number;
+  strings: ReminderStrings;
+};
+
+export function syncWaterReminders(
+  enabled: boolean,
+  hours: number[],
+  strings: ReminderStrings
+): Promise<boolean> {
   return syncReminderPlan({
     waterEnabled: enabled,
     waterHours: hours,
     streakAtRisk: false,
     streakCount: 0,
+    strings,
   }).then((result) => result.waterScheduled);
 }
 
-export function syncReminderPlan(plan: {
-  waterEnabled: boolean;
-  waterHours: number[];
-  streakAtRisk: boolean;
-  streakCount: number;
-}): Promise<{ waterScheduled: boolean }> {
+export function syncReminderPlan(plan: ReminderPlan): Promise<{ waterScheduled: boolean }> {
   const task = syncChain.then(() => applyReminderPlan(plan));
   syncChain = task.then(
     () => undefined,
@@ -75,12 +96,7 @@ export function syncReminderPlan(plan: {
   return task.catch(() => ({ waterScheduled: false }));
 }
 
-async function applyReminderPlan(plan: {
-  waterEnabled: boolean;
-  waterHours: number[];
-  streakAtRisk: boolean;
-  streakCount: number;
-}) {
+async function applyReminderPlan(plan: ReminderPlan) {
   if (Platform.OS === 'web') return { waterScheduled: !plan.waterEnabled };
 
   const notifications = getNotifications();
@@ -96,7 +112,7 @@ async function applyReminderPlan(plan: {
 
   if (Platform.OS === 'android') {
     await notifications.setNotificationChannelAsync('reminders', {
-      name: 'HabitFlow reminders',
+      name: plan.strings.channel,
       importance: notifications.AndroidImportance.DEFAULT,
     });
   }
@@ -106,8 +122,8 @@ async function applyReminderPlan(plan: {
       await notifications.scheduleNotificationAsync({
         identifier: `${WATER_ID_PREFIX}${hour}`,
         content: {
-          title: 'Time to drink water',
-          body: 'A quick glass keeps your HabitFlow streak alive.',
+          title: plan.strings.waterTitle,
+          body: plan.strings.waterBody,
           sound: 'default',
         },
         trigger: {
@@ -123,12 +139,11 @@ async function applyReminderPlan(plan: {
   if (plan.streakAtRisk) {
     const fireAt = nextStreakRiskDate();
     if (fireAt) {
-      const days = plan.streakCount;
       await notifications.scheduleNotificationAsync({
         identifier: STREAK_RISK_ID,
         content: {
-          title: days > 0 ? `Your ${days}-day streak is at risk` : 'Your streak is at risk',
-          body: 'Finish today’s daily goal to keep the flame going.',
+          title: plan.strings.streakTitle,
+          body: plan.strings.streakBody,
           sound: 'default',
         },
         trigger: {

@@ -5,20 +5,22 @@ import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
+import { useT } from '@/context/I18nContext';
 
 export default function NotFoundScreen() {
   const scheme = useColorScheme();
   const theme = Colors[scheme];
+  const t = useT();
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
+      <Stack.Screen options={{ title: t.notFound.header }} />
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <Text style={styles.emoji}>🧭</Text>
-        <Text style={[styles.title, { color: theme.text }]}>This screen doesn't exist.</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t.notFound.title}</Text>
 
         <Link href="/" style={styles.link}>
-          <Text style={[styles.linkText, { color: theme.tint }]}>Go to home screen</Text>
+          <Text style={[styles.linkText, { color: theme.tint }]}>{t.notFound.home}</Text>
         </Link>
       </View>
     </>

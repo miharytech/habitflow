@@ -4,7 +4,7 @@ import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 're
 import { Text } from '@/components/Themed';
 import { Gradients } from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
-import { formatMl } from '@/lib/dates';
+import { useT } from '@/context/I18nContext';
 
 type Props = {
   ml: number;
@@ -23,6 +23,7 @@ export default function WaterRing({
   textColor,
   mutedColor,
 }: Props) {
+  const t = useT();
   const stroke = 16;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -34,7 +35,7 @@ export default function WaterRing({
     <View
       accessible
       accessibilityRole="progressbar"
-      accessibilityLabel={`Water: ${formatMl(ml)} of ${formatMl(goalMl)}, ${percent} percent`}
+      accessibilityLabel={t.waterRing.a11y(t.formatMl(ml), t.formatMl(goalMl), percent)}
       accessibilityValue={{ min: 0, max: 100, now: percent }}
       style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       {/* The whole canvas is rotated so the arc starts at 12 o'clock. Rotating
@@ -74,10 +75,10 @@ export default function WaterRing({
         💧
       </Text>
       <Text style={{ fontSize: 38, fontFamily: Fonts.extrabold, color: textColor, marginTop: 2 }}>
-        {formatMl(ml)}
+        {t.formatMl(ml)}
       </Text>
       <Text style={{ marginTop: 4, color: mutedColor, fontFamily: Fonts.semibold, fontSize: 13 }}>
-        of {formatMl(goalMl)} · {percent}%
+        {t.waterRing.of(t.formatMl(goalMl), percent)}
       </Text>
     </View>
   );

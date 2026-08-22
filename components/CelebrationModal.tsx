@@ -7,6 +7,7 @@ import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors, { Gradients } from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
+import { useT } from '@/context/I18nContext';
 import type { Celebration } from '@/lib/gamification';
 
 type Props = {
@@ -17,19 +18,20 @@ type Props = {
 export default function CelebrationModal({ celebration, onDismiss }: Props) {
   const scheme = useColorScheme();
   const theme = Colors[scheme];
+  const t = useT();
   if (!celebration) return null;
 
   const lines: string[] = [];
-  if (celebration.dailyGoal) lines.push(`Daily goal complete · ${celebration.streak}-day streak`);
-  if (celebration.perfectDay) lines.push('Perfect day bonus');
-  if (celebration.levelUpTo) lines.push(`Level up! You reached level ${celebration.levelUpTo}`);
+  if (celebration.dailyGoal) lines.push(t.celebration.dailyGoal(celebration.streak));
+  if (celebration.perfectDay) lines.push(t.celebration.perfectDay);
+  if (celebration.levelUpTo) lines.push(t.celebration.levelUp(celebration.levelUpTo));
   for (const item of celebration.achievements) {
-    lines.push(`${item.emoji} ${item.title}`);
+    lines.push(`${item.emoji} ${t.achievements[item.id].title}`);
   }
 
   const reward: string[] = [];
-  if (celebration.xpDelta > 0) reward.push(`+${celebration.xpDelta} XP`);
-  if (celebration.gemsDelta > 0) reward.push(`+${celebration.gemsDelta} gems`);
+  if (celebration.xpDelta > 0) reward.push(t.celebration.xp(celebration.xpDelta));
+  if (celebration.gemsDelta > 0) reward.push(t.celebration.gems(celebration.gemsDelta));
 
   return (
     <Modal transparent animationType="fade" visible onRequestClose={onDismiss}>
@@ -53,7 +55,7 @@ export default function CelebrationModal({ celebration, onDismiss }: Props) {
                   {celebration.dailyGoal ? '🔥' : '🎉'}
                 </Animated.Text>
                 <Text style={[styles.title, { color: theme.text }]}>
-                  {celebration.dailyGoal ? 'Nice work!' : 'You earned a reward'}
+                  {celebration.dailyGoal ? t.celebration.titleStreak : t.celebration.titleReward}
                 </Text>
                 {lines.map((line) => (
                   <Text key={line} style={[styles.line, { color: theme.muted }]}>
@@ -68,14 +70,14 @@ export default function CelebrationModal({ celebration, onDismiss }: Props) {
                 <Pressable
                   onPress={onDismiss}
                   accessibilityRole="button"
-                  accessibilityLabel="Keep going"
+                  accessibilityLabel={t.celebration.keepGoing}
                   style={styles.buttonWrap}>
                   <LinearGradient
                     colors={Gradients.brand}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.button}>
-                    <Text style={styles.buttonText}>Keep going</Text>
+                    <Text style={styles.buttonText}>{t.celebration.keepGoing}</Text>
                   </LinearGradient>
                 </Pressable>
               </View>

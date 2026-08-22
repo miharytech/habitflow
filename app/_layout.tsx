@@ -18,6 +18,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import CelebrationModal from '@/components/CelebrationModal';
 import Colors from '@/constants/Colors';
 import { AppProvider, useApp } from '@/context/AppProvider';
+import { useT } from '@/context/I18nContext';
 import { initializeAds } from '@/lib/ads';
 
 export {
@@ -70,6 +71,7 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const { celebration, dismissCelebration } = useApp();
+  const t = useT();
   const theme = Colors[colorScheme];
 
   // Paints the window behind React's views so rotation and over-scroll never
@@ -100,8 +102,8 @@ function RootLayoutNav() {
           headerShadowVisible: false,
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Habit' }} />
-        <Stack.Screen name="water-history" options={{ title: 'Water history' }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: t.tabs.habit }} />
+        <Stack.Screen name="water-history" options={{ title: t.tabs.waterHistory }} />
       </Stack>
       <CelebrationModal celebration={celebration} onDismiss={dismissCelebration} />
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />

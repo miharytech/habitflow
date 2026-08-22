@@ -15,7 +15,8 @@ import WaterRing from '@/components/WaterRing';
 import Colors, { Gradients } from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
 import { useApp, useDailyProgress } from '@/context/AppProvider';
-import { formatMl, greeting, isOnLocalDay } from '@/lib/dates';
+import { useT } from '@/context/I18nContext';
+import { isOnLocalDay } from '@/lib/dates';
 import { QUICK_ADD_ML } from '@/lib/types';
 
 export default function TodayScreen() {
@@ -24,6 +25,7 @@ export default function TodayScreen() {
   const { ready, state, today, waterTodayMl, addWater, undoWater, toggleHabit, isHabitDone, streak } =
     useApp();
   const progress = useDailyProgress();
+  const t = useT();
 
   const canUndoWater = useMemo(
     () => state.waterLogs.some((log) => isOnLocalDay(log.at, today)),
@@ -34,24 +36,26 @@ export default function TodayScreen() {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
         <ActivityIndicator color={theme.tint} />
-        <Text style={[styles.loading, { color: theme.muted }]}>Loading HabitFlow…</Text>
+        <Text style={[styles.loading, { color: theme.muted }]}>{t.today.loading}</Text>
       </View>
     );
   }
 
   const remaining = Math.max(state.waterGoalMl - waterTodayMl, 0);
   const subtitle = progress.met
-    ? 'Daily goal complete. Nice work.'
+    ? t.today.subtitleComplete
     : progress.need === 0
-      ? 'Add a habit to start your first streak.'
+      ? t.today.subtitleNoGoal
       : state.waterTrackingEnabled && remaining > 0
-        ? `${formatMl(remaining)} of water left · ${progress.done}/${progress.need} tasks done`
-        : `${progress.done}/${progress.need} tasks done today`;
+        ? t.today.subtitleWaterLeft(t.formatMl(remaining), progress.done, progress.need)
+        : t.today.subtitleTasks(progress.done, progress.need);
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.background }]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.hello, { color: theme.text }]}>{greeting()}</Text>
+        <Text style={[styles.hello, { color: theme.text }]}>
+          {t.today.greeting(new Date().getHours())}
+        </Text>
         <Text style={[styles.sub, { color: theme.muted }]}>{subtitle}</Text>
         <StreakHeader state={state} />
         <DailyGoalBar progress={progress} />
@@ -65,7 +69,7 @@ export default function TodayScreen() {
             {progress.waterCounts ? (
               <View style={[styles.badge, { backgroundColor: theme.track }]}>
                 <Text style={[styles.badgeText, { color: theme.muted }]}>
-                  Counts as one daily task
+                  {t.today.waterIsATask}
                 </Text>
               </View>
             ) : null}
@@ -83,7 +87,7 @@ export default function TodayScreen() {
                   onPress={() => addWater(ml)}
                   scaleTo={0.9}
                   accessibilityRole="button"
-                  accessibilityLabel={`Add ${ml} millilitres of water`}>
+                  accessibilityLabel={t.today.addWaterA11y(ml)}>
                   <LinearGradient
                     colors={Gradients.water}
                     start={{ x: 0, y: 0 }}
@@ -98,18 +102,18 @@ export default function TodayScreen() {
               onPress={undoWater}
               disabled={!canUndoWater}
               accessibilityRole="button"
-              accessibilityLabel="Undo last sip"
+              accessibilityLabel={t.today.undo}
               accessibilityState={{ disabled: !canUndoWater }}
               style={[styles.undo, { opacity: canUndoWater ? 1 : 0.35 }]}>
               <Text style={{ color: theme.muted, fontFamily: Fonts.semibold, fontSize: 13 }}>
-                Undo last sip
+                {t.today.undo}
               </Text>
             </PressableScale>
           </View>
         ) : null}
 
         <View style={styles.sectionRow}>
-          <Text style={[styles.section, { color: theme.text }]}>Today&apos;s habits</Text>
+          <Text style={[styles.section, { color: theme.text }]}>{t.today.habitsSection}</Text>
           {progress.habitCount > 0 ? (
             <Text style={[styles.sectionCount, { color: theme.muted }]}>
               {progress.habitsDone}/{progress.habitCount}
@@ -119,14 +123,12 @@ export default function TodayScreen() {
         {state.habits.length === 0 ? (
           <View style={[styles.empty, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
             <Text style={styles.emptyEmoji}>🌱</Text>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No habits yet</Text>
-            <Text style={[styles.emptyBody, { color: theme.muted }]}>
-              Add your first habit and start building a streak today.
-            </Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>{t.today.emptyTitle}</Text>
+            <Text style={[styles.emptyBody, { color: theme.muted }]}>{t.today.emptyBody}</Text>
             <Link href="/(tabs)/habits" asChild>
-              <PressableScale accessibilityRole="button" accessibilityLabel="Add a habit">
+              <PressableScale accessibilityRole="button" accessibilityLabel={t.today.emptyCta}>
                 <LinearGradient colors={Gradients.brand} style={styles.emptyCta}>
-                  <Text style={styles.emptyCtaText}>Add a habit</Text>
+                  <Text style={styles.emptyCtaText}>{t.today.emptyCta}</Text>
                 </LinearGradient>
               </PressableScale>
             </Link>

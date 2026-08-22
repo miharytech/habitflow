@@ -9,6 +9,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import Colors, { Gradients } from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
 import { useApp } from '@/context/AppProvider';
+import { useT } from '@/context/I18nContext';
 import { MAX_HABIT_NAME_LENGTH } from '@/lib/types';
 
 const EMOJIS = ['✅', '💪', '📚', '🧘', '🚶', '💧', '🧠', '😴', '🥗', '🙏'];
@@ -20,13 +21,14 @@ export default function ModalScreen() {
   const { habitId } = useLocalSearchParams<{ habitId?: string | string[] }>();
   const id = Array.isArray(habitId) ? habitId[0] : habitId;
   const { state, addHabit, editHabit, canAddHabit, unlockMoreHabits } = useApp();
+  const t = useT();
   const existing = id ? state.habits.find((habit) => habit.id === id) : undefined;
   const [name, setName] = useState(existing?.name ?? '');
   const [emoji, setEmoji] = useState(existing?.emoji ?? '✅');
 
   useEffect(() => {
-    navigation.setOptions({ title: existing ? 'Edit habit' : 'New habit' });
-  }, [existing, navigation]);
+    navigation.setOptions({ title: existing ? t.habitForm.editTitle : t.habitForm.newTitle });
+  }, [existing, navigation, t]);
 
   useEffect(() => {
     if (existing) {
@@ -40,7 +42,7 @@ export default function ModalScreen() {
 
   const save = async () => {
     if (!name.trim()) {
-      Alert.alert('Name required', 'Give this habit a short name.');
+      Alert.alert(t.habitForm.nameRequiredTitle, t.habitForm.nameRequiredBody);
       return;
     }
     if (existing) {
@@ -51,10 +53,7 @@ export default function ModalScreen() {
     if (!canAddHabit) {
       const unlocked = await unlockMoreHabits();
       if (!unlocked) {
-        Alert.alert(
-          'Habit limit reached',
-          'Watch a short ad from the Habits tab to unlock more slots.'
-        );
+        Alert.alert(t.habitForm.limitTitle, t.habitForm.limitBodyHabitsTab);
         return;
       }
     }
@@ -63,7 +62,7 @@ export default function ModalScreen() {
       router.back();
       return;
     }
-    Alert.alert('Habit limit reached', 'Watch a rewarded ad from the Habits tab to unlock more slots.');
+    Alert.alert(t.habitForm.limitTitle, t.habitForm.limitBody);
   };
 
   return (
@@ -74,15 +73,17 @@ export default function ModalScreen() {
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
-      <Text style={[styles.title, { color: theme.text }]}>{existing ? 'Edit habit' : 'New habit'}</Text>
-      <Text style={[styles.label, { color: theme.muted }]}>Name</Text>
+      <Text style={[styles.title, { color: theme.text }]}>
+        {existing ? t.habitForm.editTitle : t.habitForm.newTitle}
+      </Text>
+      <Text style={[styles.label, { color: theme.muted }]}>{t.habitForm.name}</Text>
       <TextInput
         value={name}
         onChangeText={setName}
-        placeholder="e.g. No sugar"
+        placeholder={t.habitForm.namePlaceholder}
         placeholderTextColor={theme.muted}
         maxLength={MAX_HABIT_NAME_LENGTH}
-        accessibilityLabel="Habit name"
+        accessibilityLabel={t.habitForm.nameA11y}
         autoFocus={!existing}
         returnKeyType="done"
         onSubmitEditing={() => void save()}
@@ -91,7 +92,7 @@ export default function ModalScreen() {
           { color: theme.text, borderColor: theme.border, backgroundColor: theme.card, fontFamily: Fonts.semibold },
         ]}
       />
-      <Text style={[styles.label, { color: theme.muted }]}>Icon</Text>
+      <Text style={[styles.label, { color: theme.muted }]}>{t.habitForm.icon}</Text>
       <View style={styles.emojis}>
         {EMOJIS.map((item) => {
           const active = item === emoji;
@@ -102,7 +103,7 @@ export default function ModalScreen() {
               scaleTo={0.9}
               accessibilityRole="radio"
               accessibilityState={{ selected: active }}
-              accessibilityLabel={`Icon ${item}`}>
+              accessibilityLabel={t.habitForm.iconA11y(item)}>
               {active ? (
                 <LinearGradient colors={Gradients.brand} style={styles.emoji}>
                   <Text style={{ fontSize: 22 }}>{item}</Text>
@@ -120,9 +121,9 @@ export default function ModalScreen() {
         onPress={save}
         style={styles.saveWrap}
         accessibilityRole="button"
-        accessibilityLabel={existing ? 'Save changes' : 'Save habit'}>
+        accessibilityLabel={existing ? t.habitForm.saveEdit : t.habitForm.saveNew}>
         <LinearGradient colors={Gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.save}>
-          <Text style={styles.saveText}>{existing ? 'Save changes' : 'Save habit'}</Text>
+          <Text style={styles.saveText}>{existing ? t.habitForm.saveEdit : t.habitForm.saveNew}</Text>
         </LinearGradient>
       </PressableScale>
       </ScrollView>

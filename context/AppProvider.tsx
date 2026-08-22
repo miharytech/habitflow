@@ -17,7 +17,9 @@ import {
   waterMlOnDay,
   type Celebration,
 } from '@/lib/gamification';
+import { I18nProvider } from '@/context/I18nContext';
 import { ThemePreferenceProvider } from '@/context/ThemeContext';
+import { messagesFor } from '@/lib/i18n';
 import { syncReminderPlan, syncWaterReminders } from '@/lib/notifications';
 import { emptyState, loadState, scheduleSave } from '@/lib/storage';
 import {
@@ -32,6 +34,7 @@ import {
   XP_PER_HABIT,
   type DailyGoalCount,
   type Habit,
+  type LanguagePreference,
   type PersistedState,
   type ThemePreference,
 } from '@/lib/types';
@@ -60,6 +63,7 @@ type AppContextValue = {
   setDailyGoalCount: (count: DailyGoalCount) => void;
   setIncludeWaterInDailyGoal: (enabled: boolean) => void;
   setThemePreference: (preference: ThemePreference) => void;
+  setLanguage: (language: LanguagePreference) => void;
   resetAllData: () => Promise<void>;
   dismissCelebration: () => void;
 };
@@ -183,12 +187,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // used to tear down and rebuild the whole notification set.
   const reminderPlan = useMemo(() => {
     if (!state) return null;
+    // The copy is resolved here rather than inside `lib/notifications`: it is a
+    // plain module with no access to React context, and the strings also have
+    // to be part of `reminderPlanKey` so switching language reschedules.
+    const messages = messagesFor(state.language);
     return {
       waterEnabled: state.waterTrackingEnabled && state.remindersEnabled,
       waterHours: state.reminderHours,
       streakAtRisk:
         state.appStreak > 0 && !isDailyGoalMet(state, today) && hasTrackableContent(state),
       streakCount: state.appStreak,
+      strings: {
+        channel: messages.notifications.channel,
+        waterTitle: messages.notifications.waterTitle,
+        waterBody: messages.notifications.waterBody,
+        streakTitle: messages.notifications.streakTitle(state.appStreak),
+        streakBody: messages.notifications.streakBody,
+      },
     };
   }, [state, today]);
   const reminderPlanKey = reminderPlan ? JSON.stringify(reminderPlan) : '';
@@ -223,6 +238,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AppContextValue>(() => {
     const current = state ?? emptyState();
+    const reminderStrings = () => {
+      const messages = messagesFor(stateRef.current?.language ?? current.language);
+      return {
+        channel: messages.notifications.channel,
+        waterTitle: messages.notifications.waterTitle,
+        waterBody: messages.notifications.waterBody,
+        streakTitle: messages.notifications.streakTitle(stateRef.current?.appStreak ?? 0),
+        streakBody: messages.notifications.streakBody,
+      };
+    };
 
     return {
       ready,
@@ -402,12 +427,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return;
         }
         const hours = stateRef.current?.reminderHours ?? DEFAULT_REMINDER_HOURS;
-        const scheduled = await syncWaterReminders(enabled, hours);
+        const scheduled = await syncWaterReminders(enabled, hours, reminderStrings());
         update((prev) => ({ ...prev, remindersEnabled: enabled && scheduled }));
       },
       setWaterTrackingEnabled: async (enabled) => {
         if (!enabled) {
-          await syncWaterReminders(false, stateRef.current?.reminderHours ?? DEFAULT_REMINDER_HOURS);
+          await syncWaterReminders(
+            false,
+            stateRef.current?.reminderHours ?? DEFAULT_REMINDER_HOURS,
+            reminderStrings()
+          );
         }
         applyMutation((prev) => ({
           ...prev,
@@ -431,10 +460,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setThemePreference: (preference) => {
         update((prev) => ({ ...prev, themePreference: preference }));
       },
+      setLanguage: (language) => {
+        update((prev) => ({ ...prev, language }));
+      },
       resetAllData: async () => {
-        await syncWaterReminders(false, stateRef.current?.reminderHours ?? DEFAULT_REMINDER_HOURS);
+        await syncWaterReminders(
+          false,
+          stateRef.current?.reminderHours ?? DEFAULT_REMINDER_HOURS,
+          reminderStrings()
+        );
         setCelebration(null);
-        commit(emptyState());
+        // Language and appearance are how the app is read, not data about the
+        // user's habits: wiping them would leave the app in a language they may
+        // not have chosen.
+        commit({
+          ...emptyState(),
+          language: current.language,
+          themePreference: current.themePreference,
+        });
       },
       dismissCelebration,
     };
@@ -454,9 +497,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={value}>
-      <ThemePreferenceProvider preference={value.state.themePreference}>
-        {children}
-      </ThemePreferenceProvider>
+      <I18nProvider preference={value.state.language}>
+        <ThemePreferenceProvider preference={value.state.themePreference}>
+          {children}
+        </ThemePreferenceProvider>
+      </I18nProvider>
     </AppContext.Provider>
   );
 }

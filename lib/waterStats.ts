@@ -31,14 +31,14 @@ export type WaterSeries = {
   firstDay?: string;
 };
 
-export const WATER_RANGES: { id: WaterRange; label: string; a11y: string }[] = [
-  { id: '7d', label: '7D', a11y: 'Last 7 days' },
-  { id: '30d', label: '30D', a11y: 'Last 30 days' },
-  { id: '1y', label: '1Y', a11y: 'Last year' },
-  { id: 'all', label: 'All', a11y: 'All time' },
-];
+export const WATER_RANGES: WaterRange[] = ['7d', '30d', '1y', 'all'];
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** Axis labels are formatted by the caller so they follow the app language. */
+export type WaterLabels = {
+  day: (date: Date) => string;
+  month: (date: Date) => string;
+};
+
 /** History is unbounded by design; this only stops a corrupt far-past date from looping forever. */
 const MAX_RANGE_DAYS = 366 * 25;
 
@@ -58,6 +58,7 @@ export function waterHistoryStart(state: PersistedState): string | undefined {
 export function buildWaterSeries(
   state: PersistedState,
   range: WaterRange,
+  labels: WaterLabels,
   today = todayKey()
 ): WaterSeries {
   const totals = waterTotalsByDay(state);
@@ -86,7 +87,7 @@ export function buildWaterSeries(
   }
 
   const bucket = bucketFor(days.length);
-  const points = groupDays(days, bucket, goal);
+  const points = groupDays(days, bucket, goal, labels);
 
   return {
     range,
@@ -121,12 +122,13 @@ function bucketFor(dayCount: number): WaterBucket {
 function groupDays(
   days: { date: string; ml: number }[],
   bucket: WaterBucket,
-  goal: number
+  goal: number,
+  labels: WaterLabels
 ): WaterPoint[] {
   if (bucket === 'day') {
     return days.map((day) => ({
       key: day.date,
-      label: dayLabel(day.date),
+      label: labels.day(localDateFromKey(day.date)),
       ml: day.ml,
       days: 1,
       met: day.ml >= goal,
@@ -148,7 +150,10 @@ function groupDays(
     point.ml = Math.round(current.sum / current.days);
     point.days = current.days;
     point.met = point.ml >= goal;
-    point.label = bucket === 'week' ? dayLabel(point.key) : monthLabel(point.key);
+    point.label =
+      bucket === 'week'
+        ? labels.day(localDateFromKey(point.key))
+        : labels.month(localDateFromKey(point.key));
   }
 
   return points;
@@ -163,17 +168,6 @@ function weekIdOf(key: string) {
   const date = localDateFromKey(key);
   const weekday = (date.getDay() + 6) % 7;
   return addDays(key, -weekday);
-}
-
-function dayLabel(key: string) {
-  const date = localDateFromKey(key);
-  return `${MONTHS[date.getMonth()]} ${date.getDate()}`;
-}
-
-/** Month buckets can span years, so the year is always spelled out on the axis. */
-function monthLabel(key: string) {
-  const date = localDateFromKey(key);
-  return `${MONTHS[date.getMonth()]} '${String(date.getFullYear()).slice(2)}`;
 }
 
 /** Evenly spaced tick indexes, always including the first and last point. */

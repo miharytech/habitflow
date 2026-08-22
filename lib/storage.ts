@@ -1,11 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { addDays, localDayOf, todayKey } from '@/lib/dates';
+import { isLanguageCode } from '@/lib/i18n';
 import { clampFreezes, parseDailyGoalCount } from '@/lib/gamification';
 import {
   COMPLETION_RETENTION_DAYS,
   DEFAULT_DAILY_GOAL_COUNT,
   DEFAULT_GLASS_ML,
+  DEFAULT_LANGUAGE_PREFERENCE,
   DEFAULT_REMINDER_HOURS,
   DEFAULT_THEME_PREFERENCE,
   DEFAULT_WATER_GOAL_ML,
@@ -17,6 +19,7 @@ import {
   WATER_LOG_RETENTION_DAYS,
   type Habit,
   type HabitCompletion,
+  type LanguagePreference,
   type PersistedState,
   type ThemePreference,
   type WaterLog,
@@ -49,6 +52,7 @@ export const emptyState = (): PersistedState => ({
   streakFreezes: 0,
   dailyGoalCount: DEFAULT_DAILY_GOAL_COUNT,
   themePreference: DEFAULT_THEME_PREFERENCE,
+  language: DEFAULT_LANGUAGE_PREFERENCE,
   includeWaterInDailyGoal: false,
   appStreak: 0,
   longestStreak: 0,
@@ -165,6 +169,7 @@ function parseState(value: unknown): PersistedState {
     streakFreezes: clampFreezes(asFiniteNumber(value.streakFreezes, 0)),
     dailyGoalCount: parseDailyGoalCount(value.dailyGoalCount),
     themePreference: parseThemePreference(value.themePreference),
+    language: parseLanguage(value.language),
     includeWaterInDailyGoal: waterTrackingEnabled && value.includeWaterInDailyGoal === true,
     appStreak: Math.max(0, Math.floor(asFiniteNumber(value.appStreak, 0))),
     longestStreak: Math.max(
@@ -199,6 +204,11 @@ function parseWaterDaily(value: unknown): Record<string, number> {
 function parseThemePreference(value: unknown): ThemePreference {
   if (value === 'light' || value === 'dark' || value === 'system') return value;
   return DEFAULT_THEME_PREFERENCE;
+}
+
+function parseLanguage(value: unknown): LanguagePreference {
+  if (value === 'system' || isLanguageCode(value)) return value;
+  return DEFAULT_LANGUAGE_PREFERENCE;
 }
 
 function parseDay(value: unknown) {

@@ -9,19 +9,23 @@ import WaterChart from '@/components/WaterChart';
 import Colors from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
 import { useApp } from '@/context/AppProvider';
-import { formatMl, localDateFromKey } from '@/lib/dates';
+import { useT } from '@/context/I18nContext';
+import { localDateFromKey } from '@/lib/dates';
+import type { Messages } from '@/lib/i18n';
 import { buildWaterSeries, WATER_RANGES, type WaterRange } from '@/lib/waterStats';
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function WaterHistoryScreen() {
   const scheme = useColorScheme();
   const theme = Colors[scheme];
   const insets = useSafeAreaInsets();
   const { state, today } = useApp();
+  const t = useT();
   const [range, setRange] = useState<WaterRange>('30d');
 
-  const series = useMemo(() => buildWaterSeries(state, range, today), [state, range, today]);
+  const series = useMemo(
+    () => buildWaterSeries(state, range, { day: t.dates.chartDay, month: t.dates.chartMonth }, today),
+    [state, range, t, today]
+  );
   const goalPercent = Math.round((series.averageMl / Math.max(state.waterGoalMl, 1)) * 100);
   const consistency = series.daysInRange
     ? Math.round((series.daysMet / series.daysInRange) * 100)
@@ -29,10 +33,10 @@ export default function WaterHistoryScreen() {
 
   const bucketNote =
     series.bucket === 'day'
-      ? 'One point per day'
+      ? t.waterHistory.bucketDay
       : series.bucket === 'week'
-        ? 'One point per week — daily average'
-        : 'One point per month — daily average';
+        ? t.waterHistory.bucketWeek
+        : t.waterHistory.bucketMonth;
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.background }]}>
@@ -41,15 +45,15 @@ export default function WaterHistoryScreen() {
         showsVerticalScrollIndicator={false}>
         <View style={styles.rangeRow}>
           {WATER_RANGES.map((option) => {
-            const on = option.id === range;
+            const on = option === range;
             return (
               <PressableScale
-                key={option.id}
-                onPress={() => setRange(option.id)}
+                key={option}
+                onPress={() => setRange(option)}
                 scaleTo={0.94}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={option.a11y}
+                accessibilityLabel={t.waterHistory.rangeA11y[option]}
                 style={[
                   styles.rangeChip,
                   {
@@ -58,7 +62,7 @@ export default function WaterHistoryScreen() {
                   },
                 ]}>
                 <Text style={[styles.rangeText, { color: on ? theme.onTint : theme.muted }]}>
-                  {option.label}
+                  {t.waterHistory.ranges[option]}
                 </Text>
               </PressableScale>
             );
@@ -68,22 +72,29 @@ export default function WaterHistoryScreen() {
         {series.daysTracked === 0 ? (
           <View style={[styles.card, cardStyle(theme), styles.empty]}>
             <Text style={styles.emptyEmoji}>💧</Text>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>Nothing logged yet</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>
+              {t.waterHistory.emptyTitle}
+            </Text>
             <Text style={[styles.emptyBody, { color: theme.muted }]}>
-              Add water from the Today tab and this chart starts filling in. Daily totals are kept
-              for good, so you can come back to them years from now.
+              {t.waterHistory.emptyBody}
             </Text>
           </View>
         ) : (
           <>
             <View style={[styles.card, cardStyle(theme)]}>
-              <Text style={[styles.eyebrow, { color: theme.muted }]}>Daily average</Text>
+              <Text style={[styles.eyebrow, { color: theme.muted }]}>
+                {t.waterHistory.dailyAverage}
+              </Text>
               <View style={styles.heroRow}>
-                <Text style={[styles.hero, { color: theme.text }]}>{formatMl(series.averageMl)}</Text>
-                <Text style={[styles.heroMeta, { color: theme.water }]}>{goalPercent}% of goal</Text>
+                <Text style={[styles.hero, { color: theme.text }]}>
+                  {t.formatMl(series.averageMl)}
+                </Text>
+                <Text style={[styles.heroMeta, { color: theme.water }]}>
+                  {t.waterHistory.percentOfGoal(goalPercent)}
+                </Text>
               </View>
               <Text style={[styles.heroSub, { color: theme.muted }]}>
-                {rangeSentence(series.from, series.to, series.daysInRange)}
+                {rangeSentence(t, series.from, series.to, series.daysInRange)}
               </Text>
 
               <WaterChart
@@ -94,14 +105,20 @@ export default function WaterHistoryScreen() {
                 gridColor={theme.border}
                 labelColor={theme.muted}
                 goalColor={theme.tint}
-                accessibilityLabel={`Water intake chart. ${bucketNote}. Daily average ${formatMl(
-                  series.averageMl
-                )} against a ${formatMl(state.waterGoalMl)} goal.`}
+                accessibilityLabel={t.waterHistory.chartA11y(
+                  bucketNote,
+                  t.formatMl(series.averageMl),
+                  t.formatMl(state.waterGoalMl)
+                )}
               />
 
               <View style={styles.legend}>
-                <Legend color={theme.tint} label={`Goal ${formatMl(state.waterGoalMl)}`} dashed />
-                <Legend color={theme.muted} label="Your average" dashed />
+                <Legend
+                  color={theme.tint}
+                  label={t.waterHistory.legendGoal(t.formatMl(state.waterGoalMl))}
+                  dashed
+                />
+                <Legend color={theme.muted} label={t.waterHistory.legendAverage} dashed />
                 <Text style={[styles.legendNote, { color: theme.muted }]}>{bucketNote}</Text>
               </View>
             </View>
@@ -109,33 +126,40 @@ export default function WaterHistoryScreen() {
             <View style={styles.grid}>
               <Stat
                 theme={theme}
-                label="Days on goal"
+                label={t.waterHistory.daysOnGoal}
                 value={`${series.daysMet}/${series.daysInRange}`}
-                hint={`${consistency}% of days`}
+                hint={t.waterHistory.daysOnGoalHint(consistency)}
               />
               <Stat
                 theme={theme}
-                label="Total volume"
-                value={formatMl(series.totalMl)}
-                hint={`${series.daysTracked} ${series.daysTracked === 1 ? 'day' : 'days'} logged`}
+                label={t.waterHistory.totalVolume}
+                value={t.formatMl(series.totalMl)}
+                hint={t.waterHistory.totalVolumeHint(series.daysTracked)}
               />
               <Stat
                 theme={theme}
-                label="Best day"
-                value={series.bestDay ? formatMl(series.bestDay.ml) : '—'}
-                hint={series.bestDay ? longDayLabel(series.bestDay.date) : 'No water logged'}
+                label={t.waterHistory.bestDay}
+                value={series.bestDay ? t.formatMl(series.bestDay.ml) : '—'}
+                hint={
+                  series.bestDay
+                    ? t.dates.long(localDateFromKey(series.bestDay.date))
+                    : t.waterHistory.bestDayEmpty
+                }
               />
               <Stat
                 theme={theme}
-                label="Tracking since"
-                value={series.firstDay ? longDayLabel(series.firstDay) : '—'}
-                hint={series.firstDay ? `${daysBetween(series.firstDay, today)} days of history` : ''}
+                label={t.waterHistory.trackingSince}
+                value={series.firstDay ? t.dates.long(localDateFromKey(series.firstDay)) : '—'}
+                hint={
+                  series.firstDay
+                    ? t.waterHistory.trackingSinceHint(daysBetween(series.firstDay, today))
+                    : ''
+                }
               />
             </View>
 
             <Text style={[styles.footnote, { color: theme.muted }]}>
-              Every sip is kept for 90 days; each day&apos;s total is kept for good, so the All view
-              keeps growing year after year.
+              {t.waterHistory.footnote}
             </Text>
           </>
         )}
@@ -185,19 +209,15 @@ function cardStyle(theme: (typeof Colors)['light']) {
   return { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow };
 }
 
-function longDayLabel(key: string) {
-  const date = localDateFromKey(key);
-  return `${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
-}
-
 function daysBetween(from: string, to: string) {
   const ms = localDateFromKey(to).getTime() - localDateFromKey(from).getTime();
   return Math.max(1, Math.round(ms / 86400000) + 1);
 }
 
-function rangeSentence(from: string, to: string, days: number) {
-  if (days <= 1) return longDayLabel(to);
-  return `${longDayLabel(from)} → ${longDayLabel(to)} · ${days} days`;
+function rangeSentence(t: Messages, from: string, to: string, days: number) {
+  const label = (key: string) => t.dates.long(localDateFromKey(key));
+  if (days <= 1) return label(to);
+  return t.dates.range(label(from), label(to), days);
 }
 
 const styles = StyleSheet.create({

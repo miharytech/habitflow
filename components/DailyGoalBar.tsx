@@ -5,6 +5,7 @@ import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors, { Gradients } from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
+import { useT } from '@/context/I18nContext';
 import type { DailyGoalProgress } from '@/lib/gamification';
 
 type Props = {
@@ -14,16 +15,17 @@ type Props = {
 export default function DailyGoalBar({ progress }: Props) {
   const scheme = useColorScheme();
   const theme = Colors[scheme];
+  const t = useT();
   const { done, need, met, habitsDone, habitCount, waterCounts, waterMet } = progress;
 
   const empty = need === 0;
   const left = Math.max(need - done, 0);
-  const title = met ? 'Daily goal complete' : empty ? 'No daily goal yet' : 'Daily goal';
+  const title = met ? t.dailyGoal.titleComplete : empty ? t.dailyGoal.titleEmpty : t.dailyGoal.title;
   const caption = empty
-    ? 'Add a habit or turn on water tracking to start a streak.'
+    ? t.dailyGoal.captionEmpty
     : met
-      ? 'Your flame is safe for today.'
-      : `${left} more ${left === 1 ? 'task' : 'tasks'} to keep your streak.`;
+      ? t.dailyGoal.captionMet
+      : t.dailyGoal.captionLeft(left);
 
   const ratio = need === 0 ? 0 : Math.min(done / need, 1);
   const width: `${number}%` = `${ratio > 0 ? Math.max(Math.round(ratio * 100), 8) : 0}%`;
@@ -32,7 +34,7 @@ export default function DailyGoalBar({ progress }: Props) {
     <View
       accessible
       accessibilityRole="progressbar"
-      accessibilityLabel={empty ? title : `${title}: ${done} of ${need} tasks done`}
+      accessibilityLabel={empty ? title : t.dailyGoal.a11y(done, need)}
       accessibilityValue={{ min: 0, max: Math.max(need, 1), now: done }}
       style={[
         styles.card,
@@ -73,11 +75,15 @@ export default function DailyGoalBar({ progress }: Props) {
             <Chip
               theme={theme}
               done={habitsDone >= habitCount}
-              label={`✅ ${habitsDone}/${habitCount} habits`}
+              label={t.dailyGoal.chipHabits(habitsDone, habitCount)}
             />
           ) : null}
           {waterCounts ? (
-            <Chip theme={theme} done={waterMet} label={waterMet ? '💧 Water done' : '💧 Water'} />
+            <Chip
+              theme={theme}
+              done={waterMet}
+              label={waterMet ? t.dailyGoal.chipWaterDone : t.dailyGoal.chipWater}
+            />
           ) : null}
         </View>
       )}

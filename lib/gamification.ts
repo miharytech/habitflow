@@ -1,4 +1,5 @@
 import { addDays, localDayOf } from '@/lib/dates';
+import type { Messages } from '@/lib/i18n';
 import {
   GEMS_DAILY_GOAL,
   GEMS_PERFECT_DAY,
@@ -10,10 +11,11 @@ import {
   type PersistedState,
 } from '@/lib/types';
 
+/** Titles and descriptions live in `lib/i18n`; only the identity is data. */
+export type AchievementId = keyof Messages['achievements'];
+
 export type Achievement = {
-  id: string;
-  title: string;
-  description: string;
+  id: AchievementId;
   emoji: string;
 };
 
@@ -28,16 +30,16 @@ export type Celebration = {
 };
 
 export const ACHIEVEMENTS: Achievement[] = [
-  { id: 'first_goal', title: 'First win', description: 'Hit your daily goal', emoji: '🎯' },
-  { id: 'streak_3', title: 'On a roll', description: 'Reach a 3-day streak', emoji: '🔥' },
-  { id: 'streak_7', title: 'Week warrior', description: 'Reach a 7-day streak', emoji: '🗓️' },
-  { id: 'streak_14', title: 'Two-week flame', description: 'Reach a 14-day streak', emoji: '🌟' },
-  { id: 'streak_30', title: 'Monthly legend', description: 'Reach a 30-day streak', emoji: '🏆' },
-  { id: 'streak_100', title: 'Centurion', description: 'Reach a 100-day streak', emoji: '💯' },
-  { id: 'first_perfect', title: 'Perfect day', description: 'Finish every habit and water', emoji: '✨' },
-  { id: 'level_5', title: 'Level 5', description: 'Reach level 5', emoji: '⭐' },
-  { id: 'level_10', title: 'Level 10', description: 'Reach level 10', emoji: '💎' },
-  { id: 'hydrate_7', title: 'Hydrated week', description: 'Hit your water goal 7 days in a row', emoji: '💧' },
+  { id: 'first_goal', emoji: '🎯' },
+  { id: 'streak_3', emoji: '🔥' },
+  { id: 'streak_7', emoji: '🗓️' },
+  { id: 'streak_14', emoji: '🌟' },
+  { id: 'streak_30', emoji: '🏆' },
+  { id: 'streak_100', emoji: '💯' },
+  { id: 'first_perfect', emoji: '✨' },
+  { id: 'level_5', emoji: '⭐' },
+  { id: 'level_10', emoji: '💎' },
+  { id: 'hydrate_7', emoji: '💧' },
 ];
 
 const ACHIEVEMENT_BY_ID = new Map(ACHIEVEMENTS.map((item) => [item.id, item]));
@@ -410,7 +412,7 @@ function grantStreakFreezes(previousStreak: number, state: PersistedState): Pers
 function newlyUnlockedAchievements(state: PersistedState, today: string): Achievement[] {
   const have = new Set(state.unlockedAchievementIds);
   const unlocked: Achievement[] = [];
-  const maybe = (id: string, ok: boolean) => {
+  const maybe = (id: AchievementId, ok: boolean) => {
     const def = ACHIEVEMENT_BY_ID.get(id);
     if (ok && def && !have.has(id)) unlocked.push(def);
   };

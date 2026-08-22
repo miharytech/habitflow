@@ -7,12 +7,14 @@ import Colors from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { useT } from '@/context/I18nContext';
 import { TAB_BAR_HEIGHT, useTabBarSpace } from '@/components/useTabBarSpace';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme];
   const { bottom } = useTabBarSpace();
+  const t = useT();
 
   return (
     <Tabs
@@ -44,7 +46,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Today',
+          title: t.tabs.today,
           tabBarIcon: ({ color }) => (
             <SymbolView
               name={{ ios: 'flame.fill', android: 'local_fire_department', web: 'local_fire_department' }}
@@ -57,7 +59,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="habits"
         options={{
-          title: 'Habits',
+          title: t.tabs.habits,
           tabBarIcon: ({ color }) => (
             <SymbolView
               name={{ ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' }}
@@ -70,7 +72,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="progress"
         options={{
-          title: 'Progress',
+          title: t.tabs.progress,
           tabBarIcon: ({ color }) => (
             <SymbolView
               name={{ ios: 'chart.line.uptrend.xyaxis', android: 'insights', web: 'insights' }}
@@ -83,7 +85,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: t.tabs.settings,
           tabBarIcon: ({ color }) => (
             <SymbolView
               name={{ ios: 'gearshape.fill', android: 'settings', web: 'settings' }}

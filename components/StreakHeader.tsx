@@ -4,6 +4,7 @@ import { StyleSheet } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { Fonts } from '@/constants/Fonts';
 import { Gradients } from '@/constants/Colors';
+import { useT } from '@/context/I18nContext';
 import { levelFromXp } from '@/lib/gamification';
 import type { PersistedState } from '@/lib/types';
 
@@ -12,13 +13,14 @@ type Props = {
 };
 
 export default function StreakHeader({ state }: Props) {
+  const t = useT();
   const level = levelFromXp(state.xpTotal);
 
   return (
     <View style={styles.row}>
-      <Chip colors={Gradients.fire} emoji="🔥" value={state.appStreak} label="streak" />
-      <Chip colors={Gradients.gem} emoji="💎" value={state.gems} label="gems" />
-      <Chip colors={Gradients.brand} emoji="⚡" value={level} label="level" />
+      <Chip colors={Gradients.fire} emoji="🔥" value={state.appStreak} label={t.streakHeader.streak} />
+      <Chip colors={Gradients.gem} emoji="💎" value={state.gems} label={t.streakHeader.gems} />
+      <Chip colors={Gradients.brand} emoji="⚡" value={level} label={t.streakHeader.level} />
     </View>
   );
 }

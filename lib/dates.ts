@@ -31,20 +31,7 @@ export function createId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function greeting(date = new Date()) {
-  const hour = date.getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
-}
-
-export function formatMl(ml: number) {
-  if (ml >= 1000) {
-    const liters = ml / 1000;
-    return `${liters % 1 === 0 ? liters.toFixed(0) : liters.toFixed(1)} L`;
-  }
-  return `${ml} ml`;
-}
+// Wording and number formatting live in `lib/i18n`: both differ per language.
 
 export function recentDayKeys(today: string, count: number) {
   const days: string[] = [];

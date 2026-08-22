@@ -1,3 +1,5 @@
+import type { LanguagePreference } from '@/lib/i18n';
+
 export type Habit = {
   id: string;
   name: string;
@@ -21,6 +23,8 @@ export type DailyGoalCount = 1 | 2 | 3 | 'all';
 /** 'system' follows the device; the other two override it in both directions. */
 export type ThemePreference = 'system' | 'light' | 'dark';
 
+export type { LanguagePreference } from '@/lib/i18n';
+
 export type PersistedState = {
   waterGoalMl: number;
   glassMl: number;
@@ -43,6 +47,7 @@ export type PersistedState = {
   streakFreezes: number;
   dailyGoalCount: DailyGoalCount;
   themePreference: ThemePreference;
+  language: LanguagePreference;
   includeWaterInDailyGoal: boolean;
   appStreak: number;
   longestStreak: number;
@@ -70,6 +75,7 @@ export const COMPLETION_RETENTION_DAYS = 400;
 export const MAX_HABIT_NAME_LENGTH = 80;
 export const DEFAULT_DAILY_GOAL_COUNT: DailyGoalCount = 2;
 export const DEFAULT_THEME_PREFERENCE: ThemePreference = 'system';
+export const DEFAULT_LANGUAGE_PREFERENCE: LanguagePreference = 'system';
 export const MAX_STREAK_FREEZES = 2;
 export const XP_PER_HABIT = 10;
 export const XP_WATER_GOAL = 10;

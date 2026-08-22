@@ -7,11 +7,11 @@ import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors, { Gradients } from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
-import { formatMl, localDateFromKey, recentDayKeys } from '@/lib/dates';
+import { useT } from '@/context/I18nContext';
+import { localDateFromKey, recentDayKeys } from '@/lib/dates';
 import { waterMlOnDay, waterTotalsByDay } from '@/lib/gamification';
 import type { PersistedState } from '@/lib/types';
 
-const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const BAR_HEIGHT = 84;
 const DAYS = 7;
 
@@ -27,6 +27,7 @@ type Props = {
 export default function WaterHistory({ state, today }: Props) {
   const scheme = useColorScheme();
   const theme = Colors[scheme];
+  const t = useT();
 
   if (!state.waterTrackingEnabled) return null;
 
@@ -53,15 +54,15 @@ export default function WaterHistory({ state, today }: Props) {
       onPress={() => router.push('/water-history')}
       scaleTo={0.98}
       accessibilityRole="button"
-      accessibilityLabel="Water history: open the all-time chart"
+      accessibilityLabel={t.hydration.cardA11y}
       style={[
         styles.card,
         { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow },
       ]}>
       <View style={styles.headerRow}>
-        <Text style={[styles.cardTitle, { color: theme.text }]}>Hydration</Text>
+        <Text style={[styles.cardTitle, { color: theme.text }]}>{t.hydration.title}</Text>
         <Text style={[styles.headerValue, { color: theme.water }]}>
-          {formatMl(todayMl)} / {formatMl(goal)}
+          {t.hydration.header(t.formatMl(todayMl), t.formatMl(goal))}
         </Text>
       </View>
 
@@ -73,9 +74,12 @@ export default function WaterHistory({ state, today }: Props) {
             <View
               key={day.date}
               accessible
-              accessibilityLabel={`${day.date}: ${formatMl(day.ml)} of ${formatMl(goal)}${
-                day.met ? ', goal met' : ''
-              }`}
+              accessibilityLabel={t.hydration.barA11y(
+                t.dates.long(localDateFromKey(day.date)),
+                t.formatMl(day.ml),
+                t.formatMl(goal),
+                day.met
+              )}
               style={styles.column}>
               <View style={[styles.track, { backgroundColor: theme.track }]}>
                 {height > 0 ? (
@@ -99,7 +103,7 @@ export default function WaterHistory({ state, today }: Props) {
                 ) : null}
               </View>
               <Text style={[styles.dayLabel, { color: day.met ? theme.water : theme.muted }]}>
-                {WEEKDAYS[localDateFromKey(day.date).getDay()]}
+                {t.dates.weekdayInitials[localDateFromKey(day.date).getDay()]}
               </Text>
             </View>
           );
@@ -107,17 +111,21 @@ export default function WaterHistory({ state, today }: Props) {
       </View>
 
       <Text style={[styles.hint, { color: theme.muted }]}>
-        {formatMl(total)} over 7 days · {formatMl(Math.round(total / DAYS))} a day · goal met{' '}
-        {metCount}/{DAYS}
+        {t.hydration.footer(
+          t.formatMl(total),
+          t.formatMl(Math.round(total / DAYS)),
+          metCount,
+          DAYS
+        )}
       </Text>
 
       <View style={[styles.footer, { borderTopColor: theme.border }]}>
         <Text style={[styles.footerText, { color: theme.muted }]}>
           {allTimeDays > 0
-            ? `All time · ${formatMl(allTimeMl)} over ${allTimeDays} ${allTimeDays === 1 ? 'day' : 'days'}`
-            : 'All time history'}
+            ? t.hydration.allTime(t.formatMl(allTimeMl), allTimeDays)
+            : t.hydration.allTimeEmpty}
         </Text>
-        <Text style={[styles.footerLink, { color: theme.tint }]}>See all →</Text>
+        <Text style={[styles.footerLink, { color: theme.tint }]}>{t.hydration.seeAll}</Text>
       </View>
     </PressableScale>
   );

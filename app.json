@@ -64,7 +64,8 @@
           "iosAppId": "ca-app-pub-3940256099942544~1458002511",
           "userTrackingUsageDescription": "This identifier is used to show you more relevant ads, which keeps HabitFlow free."
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "extra": {
       "ads": {

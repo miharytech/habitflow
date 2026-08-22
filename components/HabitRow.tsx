@@ -6,6 +6,7 @@ import { Text, View } from '@/components/Themed';
 import Colors, { Gradients } from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useT } from '@/context/I18nContext';
 import type { Habit } from '@/lib/types';
 
 type Props = {
@@ -20,6 +21,7 @@ type Props = {
 export default function HabitRow({ habit, done, streak, onToggle, onDelete, onEdit }: Props) {
   const scheme = useColorScheme();
   const theme = Colors[scheme];
+  const t = useT();
 
   return (
     <PressableScale
@@ -28,8 +30,8 @@ export default function HabitRow({ habit, done, streak, onToggle, onDelete, onEd
       scaleTo={0.98}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: done }}
-      accessibilityLabel={`${habit.name}${streak > 0 ? `, ${streak} day streak` : ''}`}
-      accessibilityHint={onDelete ? 'Double tap to toggle, long press to delete' : undefined}
+      accessibilityLabel={t.habits.rowA11y(habit.name, streak)}
+      accessibilityHint={onDelete ? t.habits.rowHint : undefined}
       style={[
         styles.row,
         {
@@ -50,7 +52,7 @@ export default function HabitRow({ habit, done, streak, onToggle, onDelete, onEd
           {habit.emoji} {habit.name}
         </Text>
         <Text style={[styles.meta, { color: streak > 0 ? theme.streak : theme.muted }]}>
-          {streak > 0 ? `🔥 ${streak}-day streak` : 'Start a streak today'}
+          {streak > 0 ? t.habits.dayStreak(streak) : t.habits.startStreak}
         </Text>
       </View>
       {onEdit ? (
@@ -58,9 +60,9 @@ export default function HabitRow({ habit, done, streak, onToggle, onDelete, onEd
           onPress={onEdit}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel={`Edit ${habit.name}`}
+          accessibilityLabel={t.habits.editA11y(habit.name)}
           style={styles.edit}>
-          <Text style={{ color: theme.tint, fontFamily: Fonts.bold, fontSize: 13 }}>Edit</Text>
+          <Text style={{ color: theme.tint, fontFamily: Fonts.bold, fontSize: 13 }}>{t.habits.edit}</Text>
         </PressableScale>
       ) : null}
     </PressableScale>

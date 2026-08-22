@@ -103,6 +103,29 @@ type; `components/Themed.tsx` provides the themed `Text`/`View` primitives.
 *on* a card (progress tracks, empty dots, locked badges): on dark it is lighter
 than `card`, so it reads as raised rather than as a hole.
 
+### Internationalization
+
+English, French, Chinese and Spanish. `lib/i18n/en.ts` is the source of truth
+and exports `Messages = typeof en`; `fr.ts` / `zh.ts` / `es.ts` are declared as
+`Messages`, so a missing or mis-signatured key is a **compile error**, not a
+blank label. Parameterised strings are functions (`captionLeft: (left: number)
+=> …`), which keeps plural rules, word order, decimal separators (`1,5 L` in
+fr/es) and date order inside the language that needs them.
+
+Screens call `useT()` from `context/I18nContext.tsx` and never hardcode user
+text — including accessibility labels, alert copy, month and weekday names, and
+`t.formatMl()`. `lib/dates.ts` deliberately has no formatting or wording left in
+it. Things that are data keep only their identity: `ACHIEVEMENTS` carries
+`{ id, emoji }` and the title/description come from `t.achievements[id]`.
+
+`lib/notifications.ts` takes its copy pre-translated (`ReminderStrings`) because
+it runs outside React; `AppProvider` resolves it with `messagesFor(state.language)`
+and puts it in `reminderPlanKey`, so changing language reschedules the reminders.
+`language` (`system` | `en` | `fr` | `zh` | `es`) is persisted like any other
+field, and `system` resolves through `expo-localization`, falling back to English
+for any device language HabitFlow does not speak. Language and appearance both
+survive *Erase all my data* — they are how the app is read, not data about the user.
+
 `useColorScheme()` resolves the saved `themePreference` (`system` | `light` |
 `dark`, set from Settings › Appearance) over the device scheme, so an explicit
 choice overrides the phone in both directions. The preference is served by

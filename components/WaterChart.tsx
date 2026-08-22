@@ -13,7 +13,7 @@ import Svg, {
 import { View } from '@/components/Themed';
 import { Gradients } from '@/constants/Colors';
 import { Fonts } from '@/constants/Fonts';
-import { formatMl } from '@/lib/dates';
+import { useT } from '@/context/I18nContext';
 import { tickIndexes, type WaterPoint } from '@/lib/waterStats';
 
 type Props = {
@@ -45,6 +45,7 @@ export default function WaterChart({
   goalColor,
   accessibilityLabel,
 }: Props) {
+  const t = useT();
   const [width, setWidth] = useState(0);
   const onLayout = (event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width);
 
@@ -101,7 +102,7 @@ export default function WaterChart({
             strokeDasharray="4 4"
           />
           <SvgText x={0} y={y(goalMl) + 3} fill={goalColor} fontSize={10} fontFamily={Fonts.bold}>
-            {formatMl(goalMl)}
+            {t.formatMl(goalMl)}
           </SvgText>
 
           {averageMl > 0 ? (
