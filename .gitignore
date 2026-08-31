@@ -44,3 +44,6 @@ yarn-error.*
 
 # skill driver output
 .claude/skills/*/screenshots/
+
+# graphify knowledge graph (regenerated output)
+graphify-out/
